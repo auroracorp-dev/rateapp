@@ -77,7 +77,14 @@ public class UserOutput
 }
 public class UserLogIn
 {
-    [Required][MaxLength(20)] public string deviceSN { get; set; } = "";
+    private string _deviceSN;
+    [Required]
+    [MaxLength(20)]
+    public string deviceSN
+    {
+        get => _deviceSN;
+        set => _deviceSN = value?.Trim().ToLower();
+    }
 }
 
 public class UserFilter
