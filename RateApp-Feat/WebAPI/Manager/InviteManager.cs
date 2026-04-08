@@ -80,7 +80,7 @@ namespace WebAPI.Manager
             await _context.SaveChangesAsync();
         }
 
-        public async Task<PagedResult<InviteOutput>> GetAllAsync(InviteFilter filter, int page = 1, User? currentUser = null)
+        public async Task<PagedResult<InviteOutput>> GetAllAsync(InviteFilter filter, User? currentUser = null)
         {
             var user = Utils.EnsureUser(currentUser);
 
@@ -114,7 +114,7 @@ namespace WebAPI.Manager
 
             var items = await query
                 .OrderByDescending(i => i.createDate) // 최신순 정렬
-                .Skip((page - 1) * Utils.pageCount) // 페이징
+                .Skip((filter.page - 1) * Utils.pageCount) // 페이징
                 .Take(Utils.pageCount)
                 .Select(i => new InviteOutput
                 {

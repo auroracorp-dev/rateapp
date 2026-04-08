@@ -89,6 +89,7 @@ public class UserLogIn
 
 public class UserFilter
 {
+    public int page { get; set; } = 1;
     public string? userName { get; set; }
     public Role? role { get; set; }
     public int? MinPoint { get; set; }

@@ -57,6 +57,7 @@ public class ReviewOutput
 
 public class ReviewFilter
 {
+    public int page { get; set; } = 1;
     public string? buildingName { get; set; }
     public string? userName { get; set; }
 

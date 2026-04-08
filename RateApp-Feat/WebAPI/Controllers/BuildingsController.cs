@@ -71,14 +71,14 @@ namespace WebAPI.Controllers
             }
         }
 
-        // GET: api/getall/page
+        // GET: api/getall
         [RequireUser]
-        [HttpGet("getall/{curPage}")]
-        public async Task<ActionResult<PagedResult<BuildingOutput>>> GetinviteAll([FromQuery] BuildingFilter filter, int curPage = 1)
+        [HttpGet("getall")]
+        public async Task<ActionResult<PagedResult<BuildingOutput>>> GetinviteAll([FromQuery] BuildingFilter filter)
         {
             try
             {
-                return await _manager.GetAllAsync(filter, curPage);
+                return await _manager.GetAllAsync(filter);
             }
             catch (UnauthorizedAccessException ex)
             {

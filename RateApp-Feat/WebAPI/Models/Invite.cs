@@ -46,6 +46,7 @@ public class InviteOutput
 }
 public class InviteFilter
 {
+    public int page { get; set; } = 1;
     public bool? IsUsed { get; set; }
     public DateTime? createStartDate { get; set; } 
     public DateTime? createLastDate { get; set; }
