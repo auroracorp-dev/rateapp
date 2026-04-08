@@ -12,52 +12,39 @@ namespace WebAPI.Manager
         {
             _context = context;
         }
-
         public async Task<Building> AddAsync(BuildingInput input, User? currentUser = null)
         {
-            // 현재 유저 체크
             var user = Utils.EnsureUser(currentUser);
 
-            // 문자열 체크
-            ChekcTextForAdd(input);
+            input.Validate();
 
-            // 이미 존재하는지 체크
             await CheckExistForAdd(input);
 
-            Building building = new Building
-            {
-                buildingName = input.buildingName,
-                buildingAddress = input.buildingAddress,
-                avgRating = 0,                         // 최초 = 0
-                reviewCount = 0,                       // 최초 = 0
-                uploadUserId = user.userId,
-                CanUpload = false,                     // 추후 관리자가 true로 바꿔야 표시되어짐 => 이거 필요없을것 같음
-            };
+            var building = new Building();
+            building.Create(input, user.userId); 
 
-            // 새로운 건물 등록
             _context.building.Add(building);
-
-            // 저장
             await _context.SaveChangesAsync();
 
             return building;
         }
 
+
         public async Task DeleteAsync(int id, User? currentUser = null)
         {
             // 건물 체크
-            var building = await _context.building.FindAsync(id);
-            if (building == null)
-                throw new KeyNotFoundException("해당 건물은 존재하지 않습니다.");
+            var building = await _context.building.FindAsync(id) 
+                ?? throw new KeyNotFoundException("해당 건물은 존재하지 않습니다.");
 
             // 현재 유저 체크
             var user = Utils.EnsureUser(currentUser);
 
-            CheckPermissionForDelete(building, user);
+            // 권한 체크 
+            building.CheckPermissionForDelete(user);
 
-            // ★★★★★ 관련 외래키 다 지우고 지워야될것 같다.
-
-            // 리뷰 제거
+            // FK review LIST 전부 제거 후 빌딩 제거 
+            var reviews = await _context.review.Where(r => r.buildingId == building.buildingId).ToListAsync();
+            _context.review.RemoveRange(reviews);
             _context.building.Remove(building);
 
             await _context.SaveChangesAsync();
@@ -104,29 +91,13 @@ namespace WebAPI.Manager
         private async Task CheckExistForAdd(BuildingInput input)
         {
             // 건물 체크
-            var oldBuildingName = await _context.building.FirstOrDefaultAsync(b => b.buildingName == input.buildingName);
-            var oldBuildingAddress = await _context.building.FirstOrDefaultAsync(b => b.buildingAddress == input.buildingAddress);
-            if (oldBuildingName != null || oldBuildingAddress != null)
+            bool exists = await _context.building.AnyAsync(b => b.buildingName == input.buildingName 
+            ||  b.buildingAddress == input.buildingAddress);
+            if(exists)
                 throw new InvalidOperationException("이미 존재하는 건물 (이름 또는 주소) 입니다.");
         }
 
-        private void ChekcTextForAdd(BuildingInput input)
-        {
-            // 문자열 체크
-            bool checkName = TextFilter.ContainsBadWord(input.buildingName);
-            bool checkAdd = TextFilter.ContainsBadWord(input.buildingAddress);
-            if (checkName || checkAdd)
-                throw new InvalidOperationException("잘못된 입력입니다.");
-        }
-
-        private void CheckPermissionForDelete(Building building, User user)
-        {
-            // 권한 체크
-            bool isManager = Utils.HasManagerPermission(user.role);
-            bool isOwner = user.userId == building.uploadUserId;
-            if (!isManager && !isOwner)
-                throw new UnauthorizedAccessException("권한 없음");
-        }
+        
 
         private IQueryable<Building> QueryFilter(BuildingFilter filter, IQueryable<Building> query)
         {
