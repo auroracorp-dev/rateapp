@@ -123,6 +123,7 @@ public class BuildingOutput
 
 public class BuildingFilter
 {
+    public int page { get; set; } = 1;
     public string? buildingName { get; set; }
     public string? buildingAddress { get; set; }
     public double? minAvgRating { get; set; }
@@ -130,5 +131,6 @@ public class BuildingFilter
     public int? minReviewCount { get; set; }
     public int? maxReviewCount { get; set; }
     public string? uploadUserName { get; set; }
+    public int? range { get; set; }
 }
 

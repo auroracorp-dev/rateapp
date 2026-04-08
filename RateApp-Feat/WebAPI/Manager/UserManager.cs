@@ -117,7 +117,7 @@ namespace WebAPI.Manager
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Utils.PagedResult<UserOutput>> GetAllAsync(UserFilter filter, int page = 1, User? currentUser = null)
+        public async Task<Utils.PagedResult<UserOutput>> GetAllAsync(UserFilter filter, User? currentUser = null)
         {
             var user = Utils.EnsureUser(currentUser);
 
@@ -151,7 +151,7 @@ namespace WebAPI.Manager
             var totalCount = await query.CountAsync();
 
             var items = await query
-                .OrderByDescending(i => i.userId).Skip((page - 1) * Utils.pageCount).Take(Utils.pageCount)
+                .OrderByDescending(i => i.userId).Skip((filter.page - 1) * Utils.pageCount).Take(Utils.pageCount)
                 .Select(i => new UserOutput
                 {
                     userName = i.userName,

@@ -93,7 +93,7 @@ namespace WebAPI.Manager
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Utils.PagedResult<ReviewOutput>> GetAllAsync(ReviewFilter filter, int page = 1, User? currentUser = null)
+        public async Task<Utils.PagedResult<ReviewOutput>> GetAllAsync(ReviewFilter filter, User? currentUser = null)
         {
             // 유저 체크
             var user = Utils.EnsureUser(currentUser);
@@ -103,7 +103,7 @@ namespace WebAPI.Manager
 
             // 전체 쿼리
             var totalCount = await query.CountAsync();
-            var items = await query.OrderByDescending(r => r.createDate).Skip((page - 1) * Utils.pageCount).Take(Utils.pageCount)
+            var items = await query.OrderByDescending(r => r.createDate).Skip((filter.page - 1) * Utils.pageCount).Take(Utils.pageCount)
                 .Select(r => new ReviewOutput
                 {
                     reviewId = r.reviewId,

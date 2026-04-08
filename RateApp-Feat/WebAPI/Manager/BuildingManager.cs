@@ -50,7 +50,7 @@ namespace WebAPI.Manager
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Utils.PagedResult<BuildingOutput>> GetAllAsync(BuildingFilter filter, int page = 1, User? currentUser = null)
+        public async Task<Utils.PagedResult<BuildingOutput>> GetAllAsync(BuildingFilter filter, User? currentUser = null)
         {
             var user = Utils.EnsureUser(currentUser);
 
@@ -61,13 +61,10 @@ namespace WebAPI.Manager
             query = QueryFilter(filter, query);
 
             // 페이지에 출력될 데이터 추출
-            var totalCount = await query.CountAsync();
-            List<BuildingOutput> items = await GetPageData(page, query);
-
             return new Utils.PagedResult<BuildingOutput>
             {
-                Items = items,
-                TotalCount = totalCount
+                Items = await GetPageData(filter.page, query),
+                TotalCount = await query.CountAsync()
             };
         }
 
@@ -127,8 +124,7 @@ namespace WebAPI.Manager
         private async Task<List<BuildingOutput>> GetPageData(int page, IQueryable<Building> query)
         {
             // 페이징 & 정렬
-            var items = await query.OrderByDescending(b => b.buildingId) // 최신 등록 순
-                .Skip((page - 1) * Utils.pageCount).Take(Utils.pageCount)
+            return await query.OrderByDescending(b => b.buildingId).Skip((page - 1) * Utils.pageCount).Take(Utils.pageCount)
                 .Select(b => new BuildingOutput
                 {
                     buildingName = b.buildingName,
@@ -136,10 +132,7 @@ namespace WebAPI.Manager
                     avgRating = b.avgRating,
                     reviewCount = b.reviewCount,
                     uploadUserId = b.uploadUserId
-                })
-                .ToListAsync();
-            return items;
+                }).ToListAsync();
         }
-
     }
 }
