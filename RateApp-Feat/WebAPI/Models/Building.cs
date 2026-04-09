@@ -100,7 +100,7 @@ public class BuildingInput
     public string buildingName
     {
         get => _buildingName;
-        set => _buildingName = value?.Trim().ToLower();
+        set => _buildingName = value?.Trim();
     }
 
     private string _buildingAddress;
@@ -109,7 +109,7 @@ public class BuildingInput
     public string buildingAddress
     {
         get => _buildingAddress;
-        set => _buildingAddress = value?.Trim().ToLower();
+        set => _buildingAddress = value?.Trim();
     }
 
     [Required] public double latitude { get; set; }
@@ -139,13 +139,15 @@ public class BuildingFilter
     public int page { get; set; } = 1;
     public string? buildingName { get; set; }
     public string? buildingAddress { get; set; }
-    [Range(0, Utils.pageCount)] public int? minAvgRating { get; set; }
-    [Range(0, Utils.pageCount)] public int? maxAvgRating { get; set; }
-    [Range(0, ushort.MaxValue)] public int? minReviewCount { get; set; }
-    [Range(0, ushort.MaxValue)] public int? maxReviewCount { get; set; }
+    [Range(0, Utils.pageCount)] public int minAvgRating { get; set; } = 0;
+    [Range(0, Utils.pageCount)] public int maxAvgRating { get; set; } = Utils.pageCount;
+    [Range(0, ushort.MaxValue)] public int minReviewCount { get; set; } = 0;
+    [Range(0, ushort.MaxValue)] public int maxReviewCount { get; set; } = ushort.MaxValue;
     public string? uploadUserName { get; set; }
-    public double? curLat { get; set; }      // 내 위도 => null 이 아니라 현재 좌표 입력 자동 받게
-    public double? curLng { get; set; }		// 내 경도 => null 이 아니라 현재 좌표 입력 자동 받게
-    public double? range { get; set; }
+    // 초기 위도,경도 (0,0) = null island
+    [Range(-90, 90)]   public double curLat { get; set; } = 0;     // 내 위도 => 현재 좌표 입력 자동 받게
+    [Range(-180, 180)] public double curLng { get; set; } = 0;	// 내 경도 => 현재 좌표 입력 자동 받게
+    // 기본 1km 범위 반경으로만 출력
+    public double range { get; set; } = 1;
 }
 
