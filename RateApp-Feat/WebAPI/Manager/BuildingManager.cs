@@ -90,26 +90,58 @@ namespace WebAPI.Manager
 
         private IQueryable<Building> QueryFilter(BuildingFilter filter, IQueryable<Building> query)
         {
-            // 필터
-            // query = query.Where(b => b.CanUpload);
             if (!string.IsNullOrEmpty(filter.buildingName))
                 query = query.Where(b => EF.Functions.Like(b.buildingName, $"%{filter.buildingName}%"));
+
             if (!string.IsNullOrEmpty(filter.buildingAddress))
                 query = query.Where(b => EF.Functions.Like(b.buildingAddress, $"%{filter.buildingAddress}%"));
+
             if (filter.minAvgRating.HasValue)
                 query = query.Where(b => b.avgRating >= filter.minAvgRating.Value);
+
             if (filter.maxAvgRating.HasValue)
                 query = query.Where(b => b.avgRating <= filter.maxAvgRating.Value);
+
             if (filter.minReviewCount.HasValue)
                 query = query.Where(b => b.reviewCount >= filter.minReviewCount.Value);
+
             if (filter.maxReviewCount.HasValue)
                 query = query.Where(b => b.reviewCount <= filter.maxReviewCount.Value);
-            if (!string.IsNullOrEmpty(filter.uploadUserName))
-            {
-                query = query.Include(b => b.UploadUser).Where(b => b.UploadUser != null &&
-                    EF.Functions.Like(b.UploadUser.userName, $"%{filter.uploadUserName}%"));
-            }
 
+            if (!string.IsNullOrEmpty(filter.uploadUserName))
+                query = query.Where(b => b.UploadUser != null &&
+                    EF.Functions.Like(b.UploadUser.userName, $"%{filter.uploadUserName}%"));
+
+            return FilterToRange(filter, query);
+        }
+        private IQueryable<Building> FilterToRange(BuildingFilter filter, IQueryable<Building> query)
+        {
+            if (!(filter.range.HasValue && filter.curLat.HasValue && filter.curLng.HasValue))
+                return query;
+
+            const double Degree = 111.0;
+
+            double lat = filter.curLat.Value;
+            double lng = filter.curLng.Value;
+            double range = filter.range.Value;
+            
+            // 바운더리 체크
+            double latRange = range / Degree;
+            double lngRange = range / (Degree * Math.Cos(lat * Math.PI / 180));
+            query = query.Where(b => b.latitude >= lat - latRange && b.latitude <= lat + latRange &&
+                b.longitude >= lng - lngRange && b.longitude <= lng + lngRange
+            );
+
+            // 범위 체크
+            double rangeSquared = Math.Pow(range / Degree, 2);
+
+            query = query.Where(b => Math.Pow(b.latitude - lat, 2) + Math.Pow(b.longitude - lng, 2)
+                <= rangeSquared
+            );
+
+            // 거리 순 정렬
+            query = query.OrderBy(b => Math.Pow(b.latitude - lat, 2) + Math.Pow(b.longitude - lng, 2)
+);
             return query;
         }
 
