@@ -21,9 +21,13 @@ namespace WebAPI.Manager
         }
 
         // ============ PUBLIC FUNC LINE ============ //
+        const int MAX_COUNT = 100;
 
         public async Task TryToAddCode(int count = 1, User? currentUser = null)
         {
+            if (count <= 0 || count >= MAX_COUNT)
+                throw new Exception("입력 범위 초과");
+
             var user = Utils.EnsureUser(currentUser);
 
             for (int i = 0; i < count; i++)

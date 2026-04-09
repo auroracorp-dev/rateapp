@@ -121,3 +121,13 @@ public static class PagingHelper
             .ToListAsync();
     }
 }
+public static class DateTimeHelper
+{
+    /// <summary>
+    /// 연, 월, 일만 받아서 UTC DateTime 생성
+    /// </summary>
+    public static DateTime Utc(int year, int month, int day)
+    {
+        return new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Utc);
+    }
+}

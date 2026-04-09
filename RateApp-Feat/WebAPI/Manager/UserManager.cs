@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using WebAPI.Context;
+using WebAPI.Controllers;
 using WebAPI.Manager.Interfaces;
 using WebAPI.Models;
 using static Utils;
@@ -18,6 +19,9 @@ namespace WebAPI.Manager
         // ================= PUBLIC ================= //
         public async Task<User> AddAsync(UserInput input, User? currentUser = null)
         {
+            var user = AuthController.CurrentUser;
+            if (user != null)
+                throw new Exception("현재 로그인 되어진 계정이 있습니다. 잘못된 접근입니다.");
             // 권한 체크
             input.Validate();
             bool exists = await _context.users.AnyAsync(x => x.deviceSN == input.deviceSN || x.userName == input.userName);

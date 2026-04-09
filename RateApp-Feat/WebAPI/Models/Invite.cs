@@ -72,8 +72,9 @@ public class InviteFilter
 {
     public int page { get; set; } = 1;
     public bool? IsUsed { get; set; }
-    public DateTime createStartDate { get; set; } = new DateTime(1900, 1, 1);
-    public DateTime createLastDate { get; set; } = new DateTime(2099, 12, 31);
+
+    public DateTime createStartDate { get; set; } = DateTimeHelper.Utc(1900, 1, 1);
+    public DateTime createLastDate { get; set; } = DateTimeHelper.Utc(2099, 12, 31);
     public string? createdByName { get; set; }
 }
 
