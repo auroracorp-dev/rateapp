@@ -71,6 +71,8 @@ public static class Utils
 
     public const int pageCount = 10;
 
+    public 
+
 }
 
 public struct Unit
@@ -98,4 +100,7 @@ public static class TextFilter
 
         return false;
     }
+
+    public static bool CompareText(string input1, string input2)
+        { return input1.ToLower() == input2.ToLower(); }
 }

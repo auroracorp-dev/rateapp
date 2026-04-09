@@ -41,7 +41,7 @@ public class ReviewInput
     public string comment
     {
         get => _comment;
-        set => _comment = value?.Trim().ToLower();
+        set => _comment = value?.Trim();
     }
 }
 
