@@ -4,6 +4,8 @@ namespace WebAPI.Models;
 
 public class Building
 {
+    // ============ VAR LINE ============ //
+
     public int buildingId { get; set; } = 0;                        // PK, FK
     public string buildingName { get; private set; } = "";                  
     public string buildingAddress { get; private set; } = "";
@@ -12,9 +14,14 @@ public class Building
     public double avgRating { get; private set; } = 0;                     
     public int reviewCount { get; private set; } = 0;                      
     public int uploadUserId { get; private set; } = 0;                      // USER FK
+
+    // ============ FK LINE ============ //
+
     // public bool CanUpload { get; set; } = false;                    
     [ForeignKey("uploadUserId")]                                    
     public virtual User? UploadUser { get; set; }                   // FK
+
+    // ============ FUNC LINE ============ //
 
     public Building Create(BuildingInput input, int userId)
     {
@@ -126,10 +133,10 @@ public class BuildingFilter
     public int page { get; set; } = 1;
     public string? buildingName { get; set; }
     public string? buildingAddress { get; set; }
-    public double? minAvgRating { get; set; }
-    public double? maxAvgRating { get; set; }
-    public int? minReviewCount { get; set; }
-    public int? maxReviewCount { get; set; }
+    [Range(0, Utils.pageCount)] public int? minAvgRating { get; set; }
+    [Range(0, Utils.pageCount)] public int? maxAvgRating { get; set; }
+    [Range(0, ushort.MaxValue)] public int? minReviewCount { get; set; }
+    [Range(0, ushort.MaxValue)] public int? maxReviewCount { get; set; }
     public string? uploadUserName { get; set; }
     public int? range { get; set; }
 }

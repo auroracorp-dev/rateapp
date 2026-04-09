@@ -12,6 +12,9 @@ namespace WebAPI.Manager
         {
             _context = context;
         }
+
+        // ============ BRIDGE LINE ============ //
+
         public async Task<Building> AddAsync(BuildingInput input, User? currentUser = null)
         {
             var user = Utils.EnsureUser(currentUser);
@@ -28,8 +31,6 @@ namespace WebAPI.Manager
 
             return building;
         }
-
-
         public async Task DeleteAsync(int id, User? currentUser = null)
         {
             // 건물 체크
@@ -49,7 +50,6 @@ namespace WebAPI.Manager
 
             await _context.SaveChangesAsync();
         }
-
         public async Task<Utils.PagedResult<BuildingOutput>> GetAllAsync(BuildingFilter filter, User? currentUser = null)
         {
             var user = Utils.EnsureUser(currentUser);
@@ -67,17 +67,11 @@ namespace WebAPI.Manager
                 TotalCount = await query.CountAsync()
             };
         }
-
-
         public async Task<BuildingOutput?> GetByIdAsync(int id, User? currentUser = null)
         {
             // 건물 체크
-            var building = await _context.building.FindAsync(id);
-            if (building == null)
-                throw new KeyNotFoundException("해당 건물 없음");
-
-            //if (!building.CanUpload)
-            //    throw new InvalidDataException("아직 등록 되지 않음");
+            var building = await _context.building.FindAsync(id) ??
+                throw new KeyNotFoundException("해당 건물은 존재하지 않습니다.");
 
             // 조회한 id값 출력
             return DTO<BuildingOutput, Building>.Convert(building);
@@ -93,8 +87,6 @@ namespace WebAPI.Manager
             if(exists)
                 throw new InvalidOperationException("이미 존재하는 건물 (이름 또는 주소) 입니다.");
         }
-
-        
 
         private IQueryable<Building> QueryFilter(BuildingFilter filter, IQueryable<Building> query)
         {
