@@ -137,8 +137,8 @@ namespace WebAPI.Manager
 
             // FromSqlRaw + 모든 필터 + 거리 범위 + 거리 순 정렬
             return _context.building.FromSqlRaw($@"
-                SELECT b.* FROM building b
-                LEFT JOIN user u ON b.uploadUserId = u.userId
+                SELECT b.* FROM building AS b
+                LEFT JOIN user AS u ON b.uploadUserId = u.userId
                 WHERE 1=1
                   AND b.buildingName LIKE '%{filter.buildingName}%'
                   AND b.buildingAddress LIKE '%{filter.buildingAddress}%'

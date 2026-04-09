@@ -13,77 +13,43 @@ namespace WebAPI.Manager
         {
             _context = context;
         }
+
+        // ============ PUBLIC FUNC LINE ============ //
+
         public async Task<Review> AddAsync(ReviewInput input, User? currentUser = null)
         {
-            // 문자열 체크
-            bool checkCommnet = TextFilter.ContainsBadWord(input.comment);
-            if (checkCommnet)
-                throw new InvalidOperationException("잘못된 입력입니다.");
-
-            // 유저 체크
+            // 체크
             var user = Utils.EnsureUser(currentUser);
+            input.Validate();
+            var building = await _context.building.FindAsync(input.buildingId) ??
+                throw new KeyNotFoundException("해당 건물이 존재하지 않습니다.");
 
-            // 건물 존재 여부 체크
-            var building = await _context.building.FindAsync(input.buildingId)
-                ?? throw new KeyNotFoundException("해당 건물이 존재하지 않습니다.");
-
-            // 기존 리뷰 조회 (유저 + 건물 기준)
-            var existingReview = await _context.review
+            var review = await _context.review
                 .FirstOrDefaultAsync(r => r.userId == user.userId && r.buildingId == input.buildingId);
-
-            // 이미 리뷰가 있다면 → 수정 처리
-            if (existingReview != null)
+            // 업데이트
+            if (review != null)
             {
-                var originRating = existingReview.rating;
-                existingReview.rating = input.rating;
-                existingReview.comment = input.comment;
-
-                building.UpdateReview(originRating, existingReview.rating);
-                await _context.SaveChangesAsync();
-                return existingReview;
+                UpdateExistingReview(review, input, building);
             }
-            // 신규 리뷰 생성
+            // 새로 생성
             else
             {
-                var newReview = new Review
-                {
-                    buildingId = input.buildingId,
-                    userId = user.userId,
-                    likeCount = 0,
-                    rating = input.rating,
-                    comment = input.comment,
-                    createDate = DateTime.UtcNow,
-                };
-
-                _context.review.Add(newReview);
-
-                // 건물 평점 반영
-                building.AddNewReview(input.rating);
-
-                // 저장
-                await _context.SaveChangesAsync();
-
-                return newReview;
+                review = CreateNewReview(input, user, building);
             }
+            await _context.SaveChangesAsync();
+            return review;
         }
+
 
         public async Task DeleteAsync(int id, User? currentUser = null)
         {
-            var review = await _context.review.FindAsync(id);
-            if (review == null)
-                throw new KeyNotFoundException("해당 리뷰가 존재하지 않습니다.");
-            // 건물 체크
-            var building = await _context.building.FindAsync(review.buildingId);
-            if (building == null)
-                throw new KeyNotFoundException("해당 건물이 존재하지 않습니다.");
-
-            // 현재 유저 체크
+            // 체크
             var user = Utils.EnsureUser(currentUser);
-            // 권한 체크
-            bool isManager = Utils.HasManagerPermission(user.role);
-            bool isOwner = user.userId == review.userId;
-            if (!isManager && !isOwner)
-                throw new UnauthorizedAccessException("권한 없음");
+            var review = await _context.review.FindAsync(id) ??
+                throw new KeyNotFoundException("해당 리뷰가 존재하지 않습니다.");
+            var building = await _context.building.FindAsync(review.buildingId) ??
+                throw new KeyNotFoundException("해당 건물이 존재하지 않습니다.");
+            review.CheckPermissionForDelete(user);
 
             // 건물 리뷰 제거 우선 반영
             building.RemoveReview(review.rating);
@@ -96,65 +62,89 @@ namespace WebAPI.Manager
         public async Task<Utils.PagedResult<ReviewOutput>> GetAllAsync(ReviewFilter filter, User? currentUser = null)
         {
             // 유저 체크
-            var user = Utils.EnsureUser(currentUser);
+            // var user = Utils.EnsureUser(currentUser);
 
-            // 쿼리필터
-            IQueryable<Review> query = QueryFilter(filter);
-
-            // 전체 쿼리
-            var totalCount = await query.CountAsync();
-            var items = await query.OrderByDescending(r => r.createDate).Skip((filter.page - 1) * Utils.pageCount).Take(Utils.pageCount)
-                .Select(r => new ReviewOutput
-                {
-                    reviewId = r.reviewId,
-                    buildingId = r.buildingId,
-                    userId = r.userId,
-                    likeCount = r.likeCount,
-                    rating = r.rating,
-                    comment = r.comment
-                }).ToListAsync();
+            // 쿼리 전체
+            IQueryable<Review> query = _context.review.AsNoTracking();
+            //IQueryable<Review> query = _context.review.Include(r => r.User).Include(r => r.Building);
+            query = QueryFilter(filter, query);
 
             return new Utils.PagedResult<ReviewOutput>
             {
-                Items = items,
-                TotalCount = totalCount
+                Items = await PagingHelper.GetPageData(
+                    query: query, page: filter.page,
+                    orderBy: r => r.createDate,
+                    selector: r => new ReviewOutput
+                    {
+                        reviewId = r.reviewId,
+                        buildingId = r.buildingId,
+                        userId = r.userId,
+                        likeCount = r.likeCount,
+                        rating = r.rating,
+                        comment = r.comment
+                    }
+                ),
+                TotalCount = await query.CountAsync()
             };
         }
 
-        private IQueryable<Review> QueryFilter(ReviewFilter filter)
+        public async Task<ReviewOutput?> GetByIdAsync(int id, User? currentUser = null)
         {
-            // 쿼리 전체
-            IQueryable<Review> query = _context.review.Include(r => r.User).Include(r => r.Building);
+            var review = await _context.review.AsNoTracking().Include(r => r.Building).
+                FirstOrDefaultAsync(r => r.reviewId == id) ??
+                throw new KeyNotFoundException("해당 리뷰 없음");
+            if (review.Building != null /* && !review.Building.CanUpload */)
+                throw new InvalidDataException("아직 등록 되지 않음");
+
+            return DTO<ReviewOutput, Review>.Convert(review);
+        }
+
+        // ============ PRIVATE FUNC LINE ============ //
+        private void UpdateExistingReview(Review review, ReviewInput input, Building building)
+        {
+            var originRating = review.rating;
+            review.UpdateReview(input);
+            building.UpdateReview(originRating, review.rating);
+        }
+        private Review CreateNewReview(ReviewInput input, User user, Building building)
+        {
+            var review = new Review(input, user);
+            _context.review.Add(review);
+            building.AddNewReview(input.rating);
+            return review;
+        }
+
+        private IQueryable<Review> QueryFilter(ReviewFilter filter, IQueryable<Review> query)
+        {
             // 필터
             query = query.Where(r => r.Building != null /* && r.Building.CanUpload*/);
             if (!string.IsNullOrEmpty(filter.buildingName))
                 query = query.Where(r => r.Building != null && EF.Functions.Like(r.Building.buildingName, $"%{filter.buildingName}%"));
             if (!string.IsNullOrEmpty(filter.userName))
                 query = query.Where(r => r.User != null && EF.Functions.Like(r.User.userName, $"%{filter.userName}%"));
-            if (filter.MinLikeCount.HasValue)
-                query = query.Where(r => r.likeCount >= filter.MinLikeCount.Value);
-            if (filter.MaxLikeCount.HasValue)
-                query = query.Where(r => r.likeCount <= filter.MaxLikeCount.Value);
-            if (filter.MinRating.HasValue)
-                query = query.Where(r => r.rating >= filter.MinRating.Value);
-            if (filter.MaxRating.HasValue)
-                query = query.Where(r => r.rating <= filter.MaxRating.Value);
+            query = query.Where(r => r.likeCount >= filter.MinLikeCount && r.likeCount <= filter.MaxLikeCount);
+            query = query.Where(r => r.rating >= filter.MinRating && r.rating <= filter.MaxRating);
             if (!string.IsNullOrEmpty(filter.comment))
                 query = query.Where(r => r.comment != null && EF.Functions.Like(r.comment, $"%{filter.comment}%"));
             return query;
         }
-
-        public async Task<ReviewOutput?> GetByIdAsync(int id, User? currentUser = null)
+        private IQueryable<Review> QueryFilterFromRaw (ReviewFilter filter, IQueryable<Review> query)
         {
-            var review = await _context.review.FindAsync(id);
-            if (review == null)
-                throw new KeyNotFoundException("해당 리뷰 없음");
+            filter.buildingName ??= "";
+            filter.userName ??= "";
+            filter.comment ??= "";
 
-            if (review.Building != null /*&& !review.Building.CanUpload*/)
-                throw new InvalidDataException("아직 등록 되지 않음");
-
-            // 조회한 id값 출력
-            return DTO<ReviewOutput, Review>.Convert(review);
+            return _context.review.FromSqlRaw($@"
+                    SELECT * FROM review AS r
+                    LEFT JOIN user AS u ON r.userId = u.userId
+                    LEFT JOIN building AS b ON r.buildingId = b.buildingId
+                    WHERE 1=1
+                      AND r.buildingName LIKE '%{filter.buildingName}%'
+                      AND r.comment LIKE '%{filter.comment}%'
+                      AND u.userName LIKE '%{filter.userName}%'
+                      AND r.likeCount BETWEEN {filter.MinLikeCount} AND {filter.MaxLikeCount}
+                      AND r.rating BETWEEN {filter.MinRating} AND {filter.MaxRating}
+            ");
         }
     }
 }

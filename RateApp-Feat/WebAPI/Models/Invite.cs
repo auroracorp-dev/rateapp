@@ -5,7 +5,9 @@ using System.Text.Json.Serialization;
 namespace WebAPI.Models;
 public class Invite
 {
+
     // ============ VAR LINE ============ //
+
     public int inviteId { get; set; }
     public string inviteCode { get; private set; }
     public DateTime createDate { get; private set; } = DateTime.UtcNow;
@@ -18,7 +20,6 @@ public class Invite
 
     [ForeignKey("createdBy")]
     public virtual User? Creator { get; set; }
-
     [ForeignKey("usedBy")]
     public virtual User? UsedByUser { get; set; }
 
