@@ -63,7 +63,18 @@ namespace WebAPI.Manager
             // 페이지에 출력될 데이터 추출
             return new Utils.PagedResult<BuildingOutput>
             {
-                Items = await GetPageData(filter.page, query),
+                Items = await PagingHelper.GetPageData<Building, BuildingOutput, int>(
+                        query: query, page: filter.page,
+                        orderBy: b => b.buildingId,
+                        selector: b => new BuildingOutput
+                        {
+                            buildingName = b.buildingName,
+                            buildingAddress = b.buildingAddress,
+                            avgRating = b.avgRating,
+                            reviewCount = b.reviewCount,
+                            uploadUserId = b.uploadUserId
+                        }
+                    ),
                 TotalCount = await query.CountAsync()
             };
         }
@@ -166,19 +177,6 @@ namespace WebAPI.Manager
             query = query.OrderBy(b => Math.Pow(b.latitude - lat, 2) + Math.Pow(b.longitude - lng, 2)
 );
             return query;
-        }
-        private async Task<List<BuildingOutput>> GetPageData(int page, IQueryable<Building> query)
-        {
-            // 페이징 & 정렬
-            return await query.OrderByDescending(b => b.buildingId).Skip((page - 1) * Utils.pageCount).Take(Utils.pageCount)
-                .Select(b => new BuildingOutput
-                {
-                    buildingName = b.buildingName,
-                    buildingAddress = b.buildingAddress,
-                    avgRating = b.avgRating,
-                    reviewCount = b.reviewCount,
-                    uploadUserId = b.uploadUserId
-                }).ToListAsync();
         }
     }
 }

@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using WebAPI.Controllers;
 using WebAPI.Models;
@@ -70,7 +72,6 @@ public static class Utils
     }
 
     public const int pageCount = 10;
-
 }
 
 public struct Unit
@@ -101,4 +102,22 @@ public static class TextFilter
 
     public static bool CompareText(string input1, string input2)
         { return input1.ToLower() == input2.ToLower(); }
+}
+
+public static class PagingHelper
+{
+    public static async Task<List<Tout>> GetPageData<T, Tout, TKey>( IQueryable<T> query, int page,
+        Expression<Func<T, TKey>> orderBy, Expression<Func<T, Tout>> selector, bool descending = true)
+    {
+        if (descending)
+            query = query.OrderByDescending(orderBy);
+        else
+            query = query.OrderBy(orderBy);
+
+        return await query
+            .Skip((page - 1) * Utils.pageCount)
+            .Take(Utils.pageCount)
+            .Select(selector)
+            .ToListAsync();
+    }
 }
