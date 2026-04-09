@@ -52,19 +52,19 @@ public class UserInput
     [Required] [MaxLength(20)] public string deviceSN
     {
         get => _deviceSN;
-        set => _deviceSN = value?.Trim().ToLower();
+        set => _deviceSN = value?.Trim();
     }
     private string _inviteCode;
     [Required] [MaxLength(20)] public string inviteCode
     {
         get => _inviteCode;
-        set => _inviteCode = value?.Trim().ToLower();
+        set => _inviteCode = value?.Trim();
     }
     private string _userName;
     [Required] [MaxLength(10)] public string userName
     {
         get => _userName;
-        set => _userName = value?.Trim().ToLower();
+        set => _userName = value?.Trim();
     }
 }
 public class UserOutput
@@ -83,7 +83,7 @@ public class UserLogIn
     public string deviceSN
     {
         get => _deviceSN;
-        set => _deviceSN = value?.Trim().ToLower();
+        set => _deviceSN = value?.Trim();
     }
 }
 

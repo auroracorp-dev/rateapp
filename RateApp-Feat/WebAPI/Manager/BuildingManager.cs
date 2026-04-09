@@ -82,8 +82,9 @@ namespace WebAPI.Manager
         private async Task CheckExistForAdd(BuildingInput input)
         {
             // 건물 체크
-            bool exists = await _context.building.AnyAsync(b => b.buildingName == input.buildingName 
-            ||  b.buildingAddress == input.buildingAddress);
+            bool exists = await _context.building.AnyAsync(b =>
+            TextFilter.CompareText(b.buildingName, input.buildingName)|| TextFilter.CompareText(b.buildingAddress, input.buildingAddress)
+            );
             if(exists)
                 throw new InvalidOperationException("이미 존재하는 건물 (이름 또는 주소) 입니다.");
         }

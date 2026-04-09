@@ -144,8 +144,8 @@ public class BuildingFilter
     [Range(0, ushort.MaxValue)] public int? minReviewCount { get; set; }
     [Range(0, ushort.MaxValue)] public int? maxReviewCount { get; set; }
     public string? uploadUserName { get; set; }
-    public double? curLat { get; set; }      // 내 위도
-    public double? curLng { get; set; }		// 내 경도
-    public int? range { get; set; }
+    public double? curLat { get; set; }      // 내 위도 => null 이 아니라 현재 좌표 입력 자동 받게
+    public double? curLng { get; set; }		// 내 경도 => null 이 아니라 현재 좌표 입력 자동 받게
+    public double? range { get; set; }
 }
 
