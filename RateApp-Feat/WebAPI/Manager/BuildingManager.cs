@@ -23,8 +23,7 @@ namespace WebAPI.Manager
 
             await CheckExistForAdd(input);
 
-            var building = new Building();
-            building.SetBuilding(input, user.userId);
+            var building = new Building(input, user);
 
             _context.building.Add(building);
             await _context.SaveChangesAsync();

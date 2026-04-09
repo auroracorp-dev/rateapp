@@ -15,6 +15,7 @@ public enum Role
 
 public class User
 {
+    public User() { }
     public User(UserInput input)
     {
         this.userName = input.userName;

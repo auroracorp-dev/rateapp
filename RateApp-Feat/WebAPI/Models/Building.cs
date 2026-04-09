@@ -4,6 +4,18 @@ namespace WebAPI.Models;
 
 public class Building
 {
+    public Building() { }
+    public Building(BuildingInput input, User user)
+    {
+        this.buildingName = input.buildingName;
+        this.buildingAddress = input.buildingAddress;
+        this.latitude = input.latitude;
+        this.longitude = input.longitude;
+        this.uploadUserId = user.userId;
+        this.avgRating = 0;
+        this.reviewCount = 0;
+    }
+
     // ============ VAR LINE ============ //
 
     public int buildingId { get; set; } = 0;                        // PK, FK
@@ -23,17 +35,6 @@ public class Building
 
     // ============ FUNC LINE ============ //
 
-    public void SetBuilding(BuildingInput input, int userId)
-    {
-        this.buildingName = input.buildingName;
-        this.buildingAddress = input.buildingAddress;
-        this.latitude = input.latitude;
-        this.longitude = input.longitude;
-        this.uploadUserId = userId;
-        this.avgRating = 0;
-        this.reviewCount = 0;
-    }
-    // 건물이 스스로의 상태를 업데이트하는 '책임'을 가짐
     public double Range(double lat, double lng)
     {
         return Math.Pow(this.latitude - lat, 2) + Math.Pow(this.longitude - lng, 2);

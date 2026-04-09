@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace WebAPI.Models;
 public class Review
 {
+    public Review() { }
     public Review(ReviewInput input, User user)
     {
         this.buildingId = input.buildingId;
