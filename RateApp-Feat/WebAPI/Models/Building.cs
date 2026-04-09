@@ -23,6 +23,12 @@ public class Building
 
     // ============ FUNC LINE ============ //
 
+    public double Range(double lat, double lng)
+    {
+        return Math.Pow(this.latitude - lat, 2) + Math.Pow(this.longitude - lng, 2);
+    }
+
+
     public Building Create(BuildingInput input, int userId)
     {
         return new Building
@@ -138,6 +144,8 @@ public class BuildingFilter
     [Range(0, ushort.MaxValue)] public int? minReviewCount { get; set; }
     [Range(0, ushort.MaxValue)] public int? maxReviewCount { get; set; }
     public string? uploadUserName { get; set; }
+    public double? curLat { get; set; }      // 내 위도
+    public double? curLng { get; set; }		// 내 경도
     public int? range { get; set; }
 }
 
