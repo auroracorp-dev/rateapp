@@ -24,7 +24,7 @@ namespace WebAPI.Manager
             await CheckExistForAdd(input);
 
             var building = new Building();
-            building.Create(input, user.userId); 
+            building.Create(input, user.userId);
 
             _context.building.Add(building);
             await _context.SaveChangesAsync();
@@ -34,7 +34,7 @@ namespace WebAPI.Manager
         public async Task DeleteAsync(int id, User? currentUser = null)
         {
             // 건물 체크
-            var building = await _context.building.FindAsync(id) 
+            var building = await _context.building.FindAsync(id)
                 ?? throw new KeyNotFoundException("해당 건물은 존재하지 않습니다.");
 
             // 현재 유저 체크
@@ -83,9 +83,9 @@ namespace WebAPI.Manager
         {
             // 건물 체크
             bool exists = await _context.building.AnyAsync(b =>
-            TextFilter.CompareText(b.buildingName, input.buildingName)|| TextFilter.CompareText(b.buildingAddress, input.buildingAddress)
+            TextFilter.CompareText(b.buildingName, input.buildingName) || TextFilter.CompareText(b.buildingAddress, input.buildingAddress)
             );
-            if(exists)
+            if (exists)
                 throw new InvalidOperationException("이미 존재하는 건물 (이름 또는 주소) 입니다.");
         }
 
@@ -97,17 +97,8 @@ namespace WebAPI.Manager
             if (!string.IsNullOrEmpty(filter.buildingAddress))
                 query = query.Where(b => EF.Functions.Like(b.buildingAddress, $"%{filter.buildingAddress}%"));
 
-            if (filter.minAvgRating.HasValue)
-                query = query.Where(b => b.avgRating >= filter.minAvgRating.Value);
-
-            if (filter.maxAvgRating.HasValue)
-                query = query.Where(b => b.avgRating <= filter.maxAvgRating.Value);
-
-            if (filter.minReviewCount.HasValue)
-                query = query.Where(b => b.reviewCount >= filter.minReviewCount.Value);
-
-            if (filter.maxReviewCount.HasValue)
-                query = query.Where(b => b.reviewCount <= filter.maxReviewCount.Value);
+            query = query.Where(b => b.avgRating >= filter.minAvgRating && b.avgRating <= filter.maxAvgRating);
+            query = query.Where(b => b.reviewCount >= filter.minReviewCount && b.reviewCount <= filter.maxReviewCount);
 
             if (!string.IsNullOrEmpty(filter.uploadUserName))
                 query = query.Where(b => b.UploadUser != null &&
@@ -115,17 +106,48 @@ namespace WebAPI.Manager
 
             return FilterToRange(filter, query);
         }
-        private IQueryable<Building> FilterToRange(BuildingFilter filter, IQueryable<Building> query)
+        // Query 버전
+        private IQueryable<Building> QueryFilterFromRaw(BuildingFilter filter)
         {
-            if (!(filter.range.HasValue && filter.curLat.HasValue && filter.curLng.HasValue))
-                return query;
+            // null 값을 빈 문자열로 초기화
+            filter.buildingName ??= "";
+            filter.buildingAddress ??= "";
+            filter.uploadUserName ??= "";
 
             const double Degree = 111.0;
 
-            double lat = filter.curLat.Value;
-            double lng = filter.curLng.Value;
-            double range = filter.range.Value;
-            
+            double lat = filter.curLat;
+            double lng = filter.curLng;
+            double range = filter.range;
+
+            double latRange = range / Degree;
+            double lngRange = range / (Degree * Math.Cos(lat * Math.PI / 180));
+            double rangeSquared = Math.Pow(range / Degree, 2);
+
+            // FromSqlRaw + 모든 필터 + 거리 범위 + 거리 순 정렬
+            return _context.building.FromSqlRaw($@"
+                SELECT b.* FROM building b
+                LEFT JOIN user u ON b.uploadUserId = u.userId
+                WHERE 1=1
+                  AND b.buildingName LIKE '%{filter.buildingName}%'
+                  AND b.buildingAddress LIKE '%{filter.buildingAddress}%'
+                  AND b.avgRating BETWEEN {filter.minAvgRating} AND {filter.maxAvgRating}
+                  AND b.reviewCount BETWEEN {filter.minReviewCount} AND {filter.maxReviewCount}
+                  AND u.userName LIKE '%{filter.uploadUserName}%'
+                  AND b.latitude BETWEEN {lat - latRange} AND {lat + latRange}
+                  AND b.longitude BETWEEN {lng - lngRange} AND {lng + lngRange}
+                  AND POWER(b.latitude - {lat}, 2) + POWER(b.longitude - {lng}, 2) <= {rangeSquared}
+                ORDER BY POWER(b.latitude - {lat}, 2) + POWER(b.longitude - {lng}, 2)
+            ");
+        }
+        private IQueryable<Building> FilterToRange(BuildingFilter filter, IQueryable<Building> query)
+        {
+            const double Degree = 111.0;
+
+            double lat = filter.curLat;
+            double lng = filter.curLng;
+            double range = filter.range;
+
             // 바운더리 체크
             double latRange = range / Degree;
             double lngRange = range / (Degree * Math.Cos(lat * Math.PI / 180));
@@ -145,7 +167,6 @@ namespace WebAPI.Manager
 );
             return query;
         }
-
         private async Task<List<BuildingOutput>> GetPageData(int page, IQueryable<Building> query)
         {
             // 페이징 & 정렬

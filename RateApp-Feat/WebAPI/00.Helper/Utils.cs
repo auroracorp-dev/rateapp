@@ -71,8 +71,6 @@ public static class Utils
 
     public const int pageCount = 10;
 
-    public 
-
 }
 
 public struct Unit
