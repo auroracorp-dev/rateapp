@@ -13,7 +13,7 @@ namespace WebAPI.Manager
             _context = context;
         }
 
-        // ============ BRIDGE LINE ============ //
+        // ============ PUBLIC FUNC LINE ============ //
 
         public async Task<Building> AddAsync(BuildingInput input, User? currentUser = null)
         {
@@ -24,7 +24,7 @@ namespace WebAPI.Manager
             await CheckExistForAdd(input);
 
             var building = new Building();
-            building.Create(input, user.userId);
+            building.SetBuilding(input, user.userId);
 
             _context.building.Add(building);
             await _context.SaveChangesAsync();
@@ -88,7 +88,7 @@ namespace WebAPI.Manager
             return DTO<BuildingOutput, Building>.Convert(building);
         }
 
-        // ============ FUNC LINE ============ //
+        // ============ PRIVATE FUNC LINE ============ //
 
         private async Task CheckExistForAdd(BuildingInput input)
         {

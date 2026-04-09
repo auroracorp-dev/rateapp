@@ -22,25 +22,9 @@ namespace WebAPI.Controllers
         {
             _manager = manager;
         }
-
-        // POST: api/add
-        [RequireUser]
-        [HttpPost("add")]
-        public async Task<ActionResult<Invite>> PostInvite()
-        {
-            try
-            {
-                return await _manager.AddAsync(new Unit());
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
-        }
-
         [RequireUser]
         [HttpPost("add/{count}")]
-        public async Task<IActionResult> PostInvite(int count)
+        public async Task<IActionResult> PostInvite(int count = 1)
         {
             try
             {

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,17 @@ namespace WebAPI.Manager
             _context = context;
         }
 
+        // ============ PUBLIC FUNC LINE ============ //
+
+        public async Task TryToAddCode(int count = 1, User? currentUser = null)
+        {
+            var user = Utils.EnsureUser(currentUser);
+
+            for (int i = 0; i < count; i++)
+            {
+                await AddAsync(new Unit(), currentUser);
+            }
+        }
         public async Task<Invite> AddAsync(Unit input, User? currentUser = null)
         {
             // 현재 유저 체크
@@ -29,29 +41,12 @@ namespace WebAPI.Manager
                 throw new UnauthorizedAccessException("초대 코드 생성 권한 없음");
 
             Invite invite = new Invite();
-            bool saved = false;
+            string randomCode = await GenerateUniqueInviteCode(user);
 
-            while (!saved)
-            {
-                string randomCode = Utils.GenerateInviteCode(user.userId);
+            invite.SetInvite(user.userId, randomCode);
 
-                invite.inviteCode = randomCode;
-                invite.createDate = DateTime.UtcNow;
-                invite.createdBy = user.userId;
-                invite.IsUsed = false;
-
-                _context.invite.Add(invite);
-
-                try
-                {
-                    await _context.SaveChangesAsync();
-                    saved = true;
-                }
-                catch (DbUpdateException ex)
-                {
-                    _context.Entry(invite).State = EntityState.Detached;
-                }
-            }
+            _context.invite.Add(invite);
+            await _context.SaveChangesAsync();
 
             return invite;
         }
@@ -61,15 +56,11 @@ namespace WebAPI.Manager
             // 현재 유저 체크
             var user = Utils.EnsureUser(currentUser);
 
-            var invite = await _context.invite.FindAsync(id);
-            if (invite == null)
+            var invite = await _context.invite.FindAsync(id) ??
                 throw new KeyNotFoundException("초대 코드 없음");
 
             // 권한 체크
-            bool isManager = Utils.HasManagerPermission(user.role);
-            bool isOwner = user.userId == invite.createdBy;
-            if (!isManager && !isOwner)
-                throw new UnauthorizedAccessException("권한 없음");
+            invite.CheckPermissionForDelete(user);
 
             // 사용중 체크
             if (invite.IsUsed)
@@ -85,85 +76,105 @@ namespace WebAPI.Manager
             var user = Utils.EnsureUser(currentUser);
 
             var query = _context.invite.Include(i => i.Creator).AsQueryable();
+            query = QueryFilter(filter, user, query);
 
-            // 필터
-            if (!Utils.HasManagerPermission(user.role))
+            return new PagedResult<InviteOutput>
             {
-                query = query.Where(i => i.createdBy == user.userId);
-            }
-            if (filter.IsUsed.HasValue)
-            {
-                query = query.Where(i => i.IsUsed == filter.IsUsed.Value);
-            }
-            if (filter.createStartDate.HasValue)
-            {
-                query = query.Where(i => i.createDate >= filter.createStartDate.Value);
-            }
-            if (filter.createLastDate.HasValue)
-            {
-                query = query.Where(i => i.createDate <= filter.createLastDate.Value);
-            }
-            if (!string.IsNullOrEmpty(filter.createdByName))
-            {
-                query = query.Where(i => i.Creator != null &&
-                    EF.Functions.Like(i.Creator.userName, $"%{filter.createdByName}%"));
-            }
-
-            // 전체 쿼리
-            var totalCount = await query.CountAsync();
-
-            var items = await query
-                .OrderByDescending(i => i.createDate) // 최신순 정렬
-                .Skip((filter.page - 1) * Utils.pageCount) // 페이징
-                .Take(Utils.pageCount)
-                .Select(i => new InviteOutput
-                {
-                    inviteId = i.inviteId,
-                    inviteCode = i.inviteCode, 
-                    IsUsed = i.IsUsed,
-                    createdByName = i.Creator != null ? i.Creator.userName : "알 수 없음",
-                })
-                .ToListAsync();
-
-            return new PagedResult<InviteOutput> { Items = items, TotalCount = totalCount };
+                Items = await PagingHelper.GetPageData<Invite, InviteOutput, DateTime>(
+                        query, filter.page, i => i.createDate, i => new InviteOutput
+                        {
+                            inviteId = i.inviteId,
+                            inviteCode = i.inviteCode,
+                            IsUsed = i.IsUsed,
+                            createdByName = i.Creator != null ? i.Creator.userName : "알 수 없음"
+                        }, true
+                    ),
+                TotalCount = await query.CountAsync()
+            };
         }
 
         public async Task<InviteOutput?> GetByAsync(User? currentUser = null)
         {
             // 현재 유저 체크
             var user = Utils.EnsureUser(currentUser);
-
-            // 코드 소유 체크 
-            var existingInvite = await _context.invite.FirstOrDefaultAsync(i => i.usedBy == user.userId && !i.IsUsed);
-
-            if (existingInvite != null)
-                return DTO<InviteOutput, Invite>.Convert(existingInvite);
-
-            // 사용되지 않은 코드 중 하나 가져오기
-            var invite = await _context.invite.Where(i => i.IsUsed == false && i.usedBy == null)
-                .OrderBy(i => i.inviteId).FirstOrDefaultAsync();
-
-            if (invite == null)
-                throw new KeyNotFoundException("여분 초대 코드 없음");
-
-            // currentUser에게 할당
-            invite.usedBy = user.userId;
-
-            // DB 반영
-            await _context.SaveChangesAsync();
-
-            // DTO 반환
+            var invite = await GetOrAllocateInviteForUser(user);
             return DTO<InviteOutput, Invite>.Convert(invite);
         }
 
-        public async Task TryToAddCode(int count, User? currentUser = null)
-        {
-            var user = Utils.EnsureUser(currentUser);
+        // ============ PRIVATE FUNC LINE ============ //
 
-            for (int i = 0; i < count; i++)
+        private async Task<string> GenerateUniqueInviteCode(User user)
+        {
+            const int maxAttempts = 10;
+
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                await AddAsync(new Unit(), currentUser);
+                string code = Utils.GenerateInviteCode(user.userId);
+                if (!await _context.invite.AnyAsync(i => i.inviteCode == code))
+                    return code;
             }
+            throw new Exception("초대 코드 생성 실패: 중복 계속 발생");
+        }
+
+        private async Task<Invite> GetOrAllocateInviteForUser(User user)
+        {
+            var existing = await _context.invite.FirstOrDefaultAsync(i => i.usedBy == user.userId && !i.IsUsed);
+            if (existing != null)
+                return existing;
+
+            var unused = await _context.invite.Where(i => i.IsUsed == false && i.usedBy == null)
+                .OrderBy(i => i.inviteId).FirstOrDefaultAsync() ??
+                throw new KeyNotFoundException("여분 초대 코드 없음");
+
+            unused.AllocTo(user);
+
+            await _context.SaveChangesAsync();
+
+            return unused;
+        }
+
+        private IQueryable<Invite> QueryFilter(InviteFilter filter, User user, IQueryable<Invite> query)
+        {
+            // 필터
+            if (!Utils.HasManagerPermission(user.role))
+                throw new UnauthorizedAccessException("권한 없음");
+            if (filter.IsUsed.HasValue)
+            {
+                query = query.Where(i => i.IsUsed == filter.IsUsed.Value);
+            }
+            query = query.Where(i => i.createDate >= filter.createStartDate && i.createDate <= filter.createLastDate);
+
+            if (!string.IsNullOrEmpty(filter.createdByName))
+            {
+                query = query.Where(i => i.Creator != null &&
+                    EF.Functions.Like(i.Creator.userName, $"%{filter.createdByName}%"));
+            }
+
+            return query;
+        }
+
+        private IQueryable<Invite> QueryFilterFromRaw(InviteFilter filter, User user, IQueryable<Invite> query)
+        {
+            // 관리자 권한 전체 공개
+            if (!Utils.HasManagerPermission(user.role))
+                throw new UnauthorizedAccessException("권한 없음");
+
+            filter.createdByName ??= "";
+
+            string sql = $@"
+                    SELECT * FROM invite
+                    WHERE 1=1
+                    AND createDate BETWEEN {filter.createStartDate} AND {filter.createLastDate}
+                    AND createdByName LIKE '%{filter.createdByName}%'";
+
+            string usedSql = $"AND IsUsed = {filter.IsUsed}";
+
+
+            sql = filter.IsUsed.HasValue ?
+                sql + usedSql :      // IsUsed가 null 이 아니라면 IsUSed 조건 추가
+                sql;                 // Null 이라면
+
+            return _context.invite.FromSqlRaw(sql);
         }
 
     }

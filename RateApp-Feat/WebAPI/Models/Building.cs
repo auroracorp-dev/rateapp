@@ -7,42 +7,38 @@ public class Building
     // ============ VAR LINE ============ //
 
     public int buildingId { get; set; } = 0;                        // PK, FK
-    public string buildingName { get; private set; } = "";                  
+    public string buildingName { get; private set; } = "";
     public string buildingAddress { get; private set; } = "";
     public double latitude { get; private set; } = 0;
     public double longitude { get; private set; } = 0;
-    public double avgRating { get; private set; } = 0;                     
-    public int reviewCount { get; private set; } = 0;                      
+    public double avgRating { get; private set; } = 0;
+    public int reviewCount { get; private set; } = 0;
     public int uploadUserId { get; private set; } = 0;                      // USER FK
 
     // ============ FK LINE ============ //
 
     // public bool CanUpload { get; set; } = false;                    
-    [ForeignKey("uploadUserId")]                                    
+    [ForeignKey("uploadUserId")]
     public virtual User? UploadUser { get; set; }                   // FK
 
     // ============ FUNC LINE ============ //
 
+    public void SetBuilding(BuildingInput input, int userId)
+    {
+        this.buildingName = input.buildingName;
+        this.buildingAddress = input.buildingAddress;
+        this.latitude = input.latitude;
+        this.longitude = input.longitude;
+        this.uploadUserId = userId;
+        this.avgRating = 0;
+        this.reviewCount = 0;
+    }
+    // 건물이 스스로의 상태를 업데이트하는 '책임'을 가짐
     public double Range(double lat, double lng)
     {
         return Math.Pow(this.latitude - lat, 2) + Math.Pow(this.longitude - lng, 2);
     }
 
-
-    public Building Create(BuildingInput input, int userId)
-    {
-        return new Building
-        {
-            buildingName = input.buildingName,
-            buildingAddress = input.buildingAddress,
-            latitude = input.latitude,
-            longitude = input.longitude,
-            uploadUserId = userId,
-            avgRating = 0,
-            reviewCount = 0
-        };
-    }
-    // 건물이 스스로의 상태를 업데이트하는 '책임'을 가짐
     public void AddNewReview(double newRating)
     {
         double totalRating = (this.avgRating * this.reviewCount) + newRating;
@@ -54,7 +50,7 @@ public class Building
         if (this.reviewCount == 0)
             return;
 
-        double totalRating = (this.avgRating * this.reviewCount)- originRating+ newRating;
+        double totalRating = (this.avgRating * this.reviewCount) - originRating + newRating;
         this.avgRating = Math.Round((totalRating / this.reviewCount) * 2) / 2.0;
     }
     public void RemoveReview(double reviewRating)
@@ -145,7 +141,7 @@ public class BuildingFilter
     [Range(0, ushort.MaxValue)] public int maxReviewCount { get; set; } = ushort.MaxValue;
     public string? uploadUserName { get; set; }
     // 초기 위도,경도 (0,0) = null island
-    [Range(-90, 90)]   public double curLat { get; set; } = 0;     // 내 위도 => 현재 좌표 입력 자동 받게
+    [Range(-90, 90)] public double curLat { get; set; } = 0;     // 내 위도 => 현재 좌표 입력 자동 받게
     [Range(-180, 180)] public double curLng { get; set; } = 0;	// 내 경도 => 현재 좌표 입력 자동 받게
     // 기본 1km 범위 반경으로만 출력
     public double range { get; set; } = 1;
