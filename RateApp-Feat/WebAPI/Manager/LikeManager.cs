@@ -17,45 +17,36 @@ namespace WebAPI.Manager
         {
             var user = Utils.EnsureUser(currentUser);
 
-            var review = await _context.review.FindAsync(input.reviewId);
-            if (review == null)
-                throw new KeyNotFoundException("리뷰가 존재하지 않습니다.");
+            var review = await _context.review.FindAsync(input.reviewId)
+                ?? throw new KeyNotFoundException("리뷰가 존재하지 않습니다.");
 
             var existingLike = await _context.review_like
                 .FirstOrDefaultAsync(x => x.reviewId == input.reviewId && x.userId == user.userId);
 
+            bool liked;
+
             if (existingLike != null)
             {
-                if (!review.RemoveLike())
-                    throw new Exception("좋아요 수가 0보다 작아질 수 없습니다.");
-
                 _context.review_like.Remove(existingLike);
-
-                await _context.SaveChangesAsync();
-
-                return new LikeToggleResult
-                {
-                    liked = false,
-                    reviewId = review.reviewId,
-                    userId = user.userId,
-                    likeCount = review.likeCount
-                };
+                review.RemoveLike();
+                liked = false;
             }
-
-            var newLike = new Like
+            else
             {
-                reviewId = input.reviewId,
-                userId = user.userId
-            };
+                _context.review_like.Add(new Like
+                {
+                    reviewId = input.reviewId,
+                    userId = user.userId
+                });
 
-            _context.review_like.Add(newLike);
-            review.AddLike();
+                review.AddLike();
+                liked = true;
+            }
 
             await _context.SaveChangesAsync();
 
-            return new LikeToggleResult
-            {
-                liked = true,
+            return new LikeToggleResult {
+                liked = liked,
                 reviewId = review.reviewId,
                 userId = user.userId,
                 likeCount = review.likeCount

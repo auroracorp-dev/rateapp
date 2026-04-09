@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<User>().Property(u => u.role).HasConversion<string>();
+        // Unique 설정
         modelBuilder.Entity<Like>().HasKey(l => new { l.reviewId, l.userId });
         // 왜래키 연결
         {
