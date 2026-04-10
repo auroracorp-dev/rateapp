@@ -15,13 +15,13 @@ namespace WebAPI.Manager
 
         public async Task<LikeToggleResult> ToggleAsync(LikeInput input, User? currentUser = null)
         {
-            var user = Utils.EnsureUser(currentUser);
+            // var user = Utils.EnsureUser(currentUser);
 
             var review = await _context.review.FindAsync(input.reviewId)
                 ?? throw new KeyNotFoundException("리뷰가 존재하지 않습니다.");
 
             var existingLike = await _context.review_like
-                .FirstOrDefaultAsync(x => x.reviewId == input.reviewId && x.userId == user.userId);
+                .FirstOrDefaultAsync(x => x.reviewId == input.reviewId && x.userId == currentUser.userId);
 
             bool liked;
 
@@ -36,7 +36,7 @@ namespace WebAPI.Manager
                 _context.review_like.Add(new Like
                 {
                     reviewId = input.reviewId,
-                    userId = user.userId
+                    userId = currentUser.userId
                 });
 
                 review.AddLike();
@@ -48,7 +48,7 @@ namespace WebAPI.Manager
             return new LikeToggleResult {
                 liked = liked,
                 reviewId = review.reviewId,
-                userId = user.userId,
+                userId = currentUser.userId,
                 likeCount = review.likeCount
             };
         }

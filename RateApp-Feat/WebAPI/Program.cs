@@ -51,7 +51,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     builder.Services.AddScoped<LikeManager>();
 
     // Auth 연결
-    builder.Services.AddScoped<AuthManager>();
+    builder.Services.AddScoped<AuthManager>(); 
+    builder.Services.AddScoped<CurrentUserService>();
+    builder.Services.AddHttpContextAccessor();
 }
 
 // 컨트롤러 연결
@@ -113,6 +115,7 @@ builder.Services.AddSwaggerGen();
             }
         });
     });
+    builder.Services.AddHttpContextAccessor();
 }
 
 

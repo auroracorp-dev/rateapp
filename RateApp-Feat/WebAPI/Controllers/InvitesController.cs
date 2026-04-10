@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -23,8 +24,10 @@ namespace WebAPI.Controllers
         {
             _manager = manager;
         }
-        [RequireUser]
-        [HttpPost("add/{count}")]
+
+
+        [Authorize(Roles = "manager,superuser")]
+        [HttpPost("manager/add/{count}")]
         public async Task<IActionResult> PostInvite(int count = 1)
         {
             try
@@ -39,8 +42,8 @@ namespace WebAPI.Controllers
         }
 
         // DELETE: api/delete/id
-        [RequireUser]
-        [HttpDelete("delete/{id}")]
+        [Authorize(Roles = "superuser")]
+        [HttpDelete("superuser/delete/{id}")]
         public async Task<ActionResult> DeleteInvite(int id)
         {
             try
@@ -63,8 +66,8 @@ namespace WebAPI.Controllers
         }
 
         // GET: api/getall
-        [RequireUser]
-        [HttpGet("getall")]
+        [Authorize(Roles = "manager,superuser")]
+        [HttpGet("manager/getall")]
         public async Task<ActionResult<PagedResult<InviteOutput>>> GetinviteAll([FromQuery] InviteFilter filter)
         {
             try
@@ -76,8 +79,9 @@ namespace WebAPI.Controllers
                 return StatusCode(403, new { message = ex.Message });
             }
         }
-        
+
         // GET: api/get
+        [Authorize]
         [HttpGet("get")]
         public async Task<ActionResult<InviteOutput?>> Getinvite()
         {

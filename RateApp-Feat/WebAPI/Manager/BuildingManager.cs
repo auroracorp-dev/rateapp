@@ -17,13 +17,13 @@ namespace WebAPI.Manager
 
         public async Task<Building> AddAsync(BuildingInput input, User? currentUser = null)
         {
-            var user = Utils.EnsureUser(currentUser);
+            //var user = Utils.EnsureUser(currentUser);
 
             input.Validate();
 
             await CheckExistForAdd(input);
 
-            var building = new Building(input, user);
+            var building = new Building(input, currentUser);
 
             _context.building.Add(building);
             await _context.SaveChangesAsync();
@@ -37,10 +37,10 @@ namespace WebAPI.Manager
                 ?? throw new KeyNotFoundException("해당 건물은 존재하지 않습니다.");
 
             // 현재 유저 체크
-            var user = Utils.EnsureUser(currentUser);
+            // var user = Utils.EnsureUser(currentUser);
 
             // 권한 체크 
-            building.CheckPermissionForDelete(user);
+            // building.CheckPermissionForDelete(currentUser);
 
             // FK review LIST 전부 제거 후 빌딩 제거 
             var reviews = await _context.review.Where(r => r.buildingId == building.buildingId).ToListAsync();
@@ -51,7 +51,7 @@ namespace WebAPI.Manager
         }
         public async Task<Utils.PagedResult<BuildingOutput>> GetAllAsync(BuildingFilter filter, User? currentUser = null)
         {
-            var user = Utils.EnsureUser(currentUser);
+            // var user = Utils.EnsureUser(currentUser);
 
             // 전체 쿼리
             IQueryable<Building> query = _context.building;
@@ -93,8 +93,7 @@ namespace WebAPI.Manager
         {
             // 건물 체크
             bool exists = await _context.building.AnyAsync(b =>
-            TextFilter.CompareText(b.buildingName, input.buildingName) || TextFilter.CompareText(b.buildingAddress, input.buildingAddress)
-            );
+                (b.buildingName == input.buildingName.ToLower()) || (b.buildingAddress == input.buildingAddress.ToLower()));
             if (exists)
                 throw new InvalidOperationException("이미 존재하는 건물 (이름 또는 주소) 입니다.");
         }

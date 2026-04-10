@@ -19,13 +19,13 @@ namespace WebAPI.Manager
         public async Task<Review> AddAsync(ReviewInput input, User? currentUser = null)
         {
             // 체크
-            var user = Utils.EnsureUser(currentUser);
+            // var user = Utils.EnsureUser(currentUser);
             input.Validate();
             var building = await _context.building.FindAsync(input.buildingId) ??
                 throw new KeyNotFoundException("해당 건물이 존재하지 않습니다.");
 
             var review = await _context.review
-                .FirstOrDefaultAsync(r => r.userId == user.userId && r.buildingId == input.buildingId);
+                .FirstOrDefaultAsync(r => r.userId == currentUser.userId && r.buildingId == input.buildingId);
             // 업데이트
             if (review != null)
             {
@@ -34,7 +34,7 @@ namespace WebAPI.Manager
             // 새로 생성
             else
             {
-                review = CreateNewReview(input, user, building);
+                review = CreateNewReview(input, currentUser, building);
             }
             await _context.SaveChangesAsync();
             return review;
@@ -44,12 +44,12 @@ namespace WebAPI.Manager
         public async Task DeleteAsync(int id, User? currentUser = null)
         {
             // 체크
-            var user = Utils.EnsureUser(currentUser);
+            // var user = Utils.EnsureUser(currentUser);
             var review = await _context.review.FindAsync(id) ??
                 throw new KeyNotFoundException("해당 리뷰가 존재하지 않습니다.");
             var building = await _context.building.FindAsync(review.buildingId) ??
                 throw new KeyNotFoundException("해당 건물이 존재하지 않습니다.");
-            review.CheckPermissionForDelete(user);
+            // review.CheckPermissionForDelete(currentUser);
 
             // 건물 리뷰 제거 우선 반영
             building.RemoveReview(review.rating);

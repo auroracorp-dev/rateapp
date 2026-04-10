@@ -104,10 +104,10 @@ namespace WebAPI.Controllers
         {
             try
             {
-                var currentUser = AuthController.CurrentUser;
-                if (currentUser == null)
-                    return Unauthorized(new { message = "로그인이 필요합니다." });
-                var result = await _manager.UpdateUsersRole(id, role, currentUser);
+                //var currentUser = AuthController.CurrentUser;
+                //if (currentUser == null)
+                //    return Unauthorized(new { message = "로그인이 필요합니다." });
+                // var result = await _manager.UpdateUsersRole(id, role, currentUser);
                 return Ok("result");
             }
             catch (KeyNotFoundException ex)

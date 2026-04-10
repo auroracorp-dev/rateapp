@@ -80,14 +80,14 @@ public class Building
         // 0~10 사이 제한
         this.avgRating = Math.Clamp(this.avgRating, 0, 10);
     }
-    public void CheckPermissionForDelete(User user)
-    {
-        // 권한 체크
-        bool isManager = Utils.HasManagerPermission(user.role);
-        bool isOwner = user.userId == this.uploadUserId;
-        if (!isManager && !isOwner)
-            throw new UnauthorizedAccessException("권한 없음");
-    }
+    //public void CheckPermissionForDelete(User user)
+    //{
+    //    // 권한 체크
+    //    bool isManager = Utils.HasManagerPermission(user.role);
+    //    bool isOwner = user.userId == this.uploadUserId;
+    //    if (!isManager && !isOwner)
+    //        throw new UnauthorizedAccessException("권한 없음");
+    //}
 }
 public class BuildingInput
 {

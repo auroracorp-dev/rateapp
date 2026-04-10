@@ -21,7 +21,7 @@ namespace WebAPI.Controllers
         private readonly AuthManager _manager;
         private readonly IConfiguration _config;
         // TEMP STATIC CURRENT USER LINE
-        public static User? CurrentUser { get; private set; } 
+        // public static User? CurrentUser { get; private set; } 
         public AuthController(AuthManager manager, IConfiguration config)
         {
             _manager = manager;
@@ -33,7 +33,7 @@ namespace WebAPI.Controllers
         {
             try
             {
-                var user = await _manager.TryToLogin(request, CurrentUser);
+                var user = await _manager.TryToLogin(request);
 
                 if (user == null)
                 {
@@ -76,8 +76,9 @@ namespace WebAPI.Controllers
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, user.userName.ToString()),
-                new Claim("deviceSN", user.deviceSN)
+                new Claim(ClaimTypes.NameIdentifier, user.userId.ToString()),
+                new Claim("deviceSN", user.deviceSN),
+                new Claim(ClaimTypes.Role, user.role.ToString().ToLower()),
             };
 
             var token = new JwtSecurityToken(
