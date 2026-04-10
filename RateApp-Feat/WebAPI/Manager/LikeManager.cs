@@ -7,21 +7,25 @@ namespace WebAPI.Manager
     public class LikeManager
     {
         private readonly AppDbContext _context;
+        private readonly CurrentUserService _currentUserService;
 
-        public LikeManager(AppDbContext context)
+        public LikeManager(AppDbContext context, CurrentUserService currentUserService)
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
+
+        // ============ PUBLIC FUNC LINE ============ //
 
         public async Task<LikeToggleResult> ToggleAsync(LikeInput input, User? currentUser = null)
         {
-            // var user = Utils.EnsureUser(currentUser);
+            var user = await CurrentUser();
 
-            var review = await _context.review.FindAsync(input.reviewId)
-                ?? throw new KeyNotFoundException("리뷰가 존재하지 않습니다.");
+            var review = await _context.review.FindAsync(input.reviewId) ??
+                throw new KeyNotFoundException("리뷰가 존재하지 않습니다.");
 
-            var existingLike = await _context.review_like
-                .FirstOrDefaultAsync(x => x.reviewId == input.reviewId && x.userId == currentUser.userId);
+            var existingLike = await _context.review_like.FirstOrDefaultAsync
+                (x => x.reviewId == input.reviewId && x.userId == user.userId);
 
             bool liked;
 
@@ -36,7 +40,7 @@ namespace WebAPI.Manager
                 _context.review_like.Add(new Like
                 {
                     reviewId = input.reviewId,
-                    userId = currentUser.userId
+                    userId = user.userId
                 });
 
                 review.AddLike();
@@ -48,9 +52,14 @@ namespace WebAPI.Manager
             return new LikeToggleResult {
                 liked = liked,
                 reviewId = review.reviewId,
-                userId = currentUser.userId,
+                userId = user.userId,
                 likeCount = review.likeCount
             };
         }
+
+        // ============ PRIVATE FUNC LINE ============ //
+
+        private async Task<User?> CurrentUser() => await _currentUserService.GetUserAsync();
+
     }
 }
