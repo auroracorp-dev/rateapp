@@ -20,7 +20,8 @@ namespace WebAPI.Manager
 
         public async Task<Building> AddAsync(BuildingInput input, User? currentUser = null)
         {
-            var user = await CurrentUser();
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL _ ADD ASYNC _ BUILDING");
 
             await EnsureCanCreateBuilding(input);
 

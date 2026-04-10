@@ -92,22 +92,22 @@ public class Building
 }
 public class BuildingInput
 {
-    private string _buildingName;
+    private string _buildingName = "";
     [Required]
     [MaxLength(50)]
     public string buildingName
     {
         get => _buildingName;
-        set => _buildingName = value?.Trim();
+        set => _buildingName = value.Trim();
     }
 
-    private string _buildingAddress;
+    private string _buildingAddress = "";
     [Required]
     [MaxLength(50)]
     public string buildingAddress
     {
         get => _buildingAddress;
-        set => _buildingAddress = value?.Trim();
+        set => _buildingAddress = value.Trim();
     }
 
     [Required] public double latitude { get; set; }

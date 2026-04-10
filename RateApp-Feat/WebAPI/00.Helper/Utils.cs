@@ -68,7 +68,7 @@ public static class Utils
     public class PagedResult<T>
     {
         public int TotalCount { get; set; }
-        public List<T> Items { get; set; }
+        public List<T> Items { get; set; } = new List<T>();
     }
 
     public const int pageCount = 10;
