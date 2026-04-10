@@ -82,7 +82,7 @@ namespace WebAPI.Manager
                         inviteCode = i.inviteCode,
                         IsUsed = i.IsUsed,
                         createdByName = i.Creator != null ? i.Creator.userName : "알 수 없음"
-                    }, 
+                    },
                     true
                 ),
             };

@@ -31,30 +31,19 @@ namespace WebAPI.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login(UserLogIn request)
         {
-            try
-            {
-                var user = await _manager.TryToLogin(request);
+            var user = await _manager.TryToLogin(request);
 
-                if (user == null)
-                {
-                    return Unauthorized(new { message = "잘못된 접근입니다." });
-                }
-                var token = GenerateJwtToken(user);
+            if (user == null)
+            {
+                return Unauthorized(new { message = "잘못된 접근입니다." });
+            }
+            var token = GenerateJwtToken(user);
 
-                return Ok(new
-                {
-                    token,
-                    user.deviceSN
-                });
-            }
-            catch (InvalidOperationException ex)
+            return Ok(new
             {
-                return Conflict(new { message = ex.Message }); // 409
-            }
-            catch (ArgumentException ex)
-            {
-                return Unauthorized(new { message = ex.Message });
-            }
+                token,
+                user.deviceSN
+            });
         }
         [Authorize]
         [HttpPost("logout")]
@@ -72,7 +61,7 @@ namespace WebAPI.Controllers
 
             var key = new SymmetricSecurityKey(Convert.FromBase64String(jwtKey));
 
-            var creds = new SigningCredentials(key,SecurityAlgorithms.HmacSha256);
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {

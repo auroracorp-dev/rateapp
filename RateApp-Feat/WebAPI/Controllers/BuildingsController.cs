@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -24,88 +25,38 @@ namespace WebAPI.Controllers
         }
 
         // POST: api/add
-        [RequireUser]
+        [Authorize]
         [HttpPost("add")]
         public async Task<ActionResult<Building>> PostBuilding([FromBody] BuildingInput input)
         {
-            try
-            {
-                return await _manager.AddAsync(input);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { message = ex.Message }); // 409
-            }
+            input.Validate();
+            return await _manager.AddAsync(input);
         }
 
 
         // DELETE: api/delete/id
-        [RequireUser]
-        [HttpDelete("delete/{id}")]
+        [Authorize(Roles = "master,superuser")]
+        [HttpDelete("manager/delete/{id}")]
         public async Task<ActionResult> DeleteBuilding(int id)
         {
-            try
-            {
-                await _manager.DeleteAsync(id);
-                return NoContent();
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { message = ex.Message }); // 409
-            }
+            await _manager.DeleteAsync(id);
+            return NoContent();
         }
 
         // GET: api/getall
-        [RequireUser]
+        [Authorize]
         [HttpGet("getall")]
-        public async Task<ActionResult<PagedResult<BuildingOutput>>> GetinviteAll([FromQuery] BuildingFilter filter)
+        public async Task<ActionResult<PagedResult<BuildingOutput>>> GetBuildingAll([FromQuery] BuildingFilter filter)
         {
-            try
-            {
-                return await _manager.GetAllAsync(filter);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
+            return await _manager.GetAllAsync(filter);
         }
 
         // GET: api/get/id
+        [Authorize]
         [HttpGet("get/{id}")]
-        public async Task<ActionResult<BuildingOutput?>> Getinvite(int id)
+        public async Task<ActionResult<BuildingOutput?>> GetBuilding(int id)
         {
-            try
-            {
-                return await _manager.GetByIdAsync(id);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
-            catch (InvalidDataException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
+            return await _manager.GetByIdAsync(id);
         }
     }
 }

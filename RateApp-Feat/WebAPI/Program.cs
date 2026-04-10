@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -51,7 +52,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     builder.Services.AddScoped<LikeManager>();
 
     // Auth 연결
-    builder.Services.AddScoped<AuthManager>(); 
+    builder.Services.AddScoped<AuthManager>();
     builder.Services.AddScoped<CurrentUserService>();
     builder.Services.AddHttpContextAccessor();
 }
@@ -59,8 +60,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // 컨트롤러 연결
 builder.Services.AddControllers();
 builder.Services.AddControllers()
-    .AddJsonOptions(options => {
-        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());});
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -124,6 +127,32 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+// 예외처리 담당
+{
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async context =>
+        {
+            var feature = context.Features.Get<IExceptionHandlerFeature>();
+            var exception = feature?.Error;
+
+            context.Response.ContentType = "application/json";
+
+            context.Response.StatusCode = exception switch
+            {
+                UnauthorizedAccessException => 403,
+                KeyNotFoundException => 404,
+                InvalidOperationException => 409,
+                _ => 500
+            };
+
+            await context.Response.WriteAsJsonAsync(new
+            {
+                message = exception?.Message
+            });
+        });
+    });
+}
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
