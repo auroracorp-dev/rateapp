@@ -1,7 +1,10 @@
 ﻿using Dapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Npgsql;
 using System.Reflection.Emit;
+using System.Text;
 using WebAPI.Context;
 using WebAPI.Manager;
 using WebAPI.Manager.Interfaces;
@@ -10,6 +13,10 @@ using WebAPI.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 Dapper.DefaultTypeMap.MatchNamesWithUnderscores = true;
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Information);
 
 // PostgreSQL 연결
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -57,6 +64,61 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// 인증
+{
+    builder.Services.AddAuthentication(options =>
+    {
+        // 인증 방법
+        options.DefaultAuthenticateScheme = "Bearer";
+        // 인증 실패시 리다이렉션 할때 사용할 인증방법
+        options.DefaultChallengeScheme = "Bearer";
+    })
+    .AddJwtBearer("Bearer", options =>
+    {
+        var key = Convert.FromBase64String(builder.Configuration["Jwt:Key"]);
+
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,                             // 내 서버에서 발급한건지
+            ValidateAudience = false,                           // 내 App에서 발급한건지
+            ValidateIssuerSigningKey = true,                    // 위조 여부 확인
+            IssuerSigningKey = new SymmetricSecurityKey(key),   // 서명 검증
+            ValidateLifetime = true                             // 만료 여부 체크
+        };
+    });
+    // Swagger 페이지 인증하는 버튼 생성
+    builder.Services.AddSwaggerGen(c =>
+    {
+        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header
+        });
+
+        c.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                new string[] {}
+            }
+        });
+    });
+}
+
+
+// ======================= 빌드 ======================= //
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -68,6 +130,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

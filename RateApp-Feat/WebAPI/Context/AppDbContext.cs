@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>().Property(u => u.role).HasConversion<string>();
         // Unique 설정
         modelBuilder.Entity<Like>().HasKey(l => new { l.reviewId, l.userId });
+        modelBuilder.Entity<User>().HasIndex(u => u.userName).IsUnique();
         // 왜래키 연결
         {
             // modelBuilder.Entity<Invite>().HasOne(i => i.UsedByUser).WithMany().HasForeignKey(i => i.usedBy).OnDelete(DeleteBehavior.SetNull);

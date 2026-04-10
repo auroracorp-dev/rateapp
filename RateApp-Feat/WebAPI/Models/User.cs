@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Xml.Linq;
@@ -116,7 +117,7 @@ public class UserLogIn
     [MaxLength(20)]
     public string deviceSN
     {
-        get => _deviceSN;
+        get => _deviceSN; 
         set => _deviceSN = value?.Trim();
     }
 }

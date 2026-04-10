@@ -14,28 +14,13 @@ namespace WebAPI.Manager
             _context = context;
         }
 
-        public async Task<User?> TryToLogin(UserLogIn request, User? CurrentUser)
+        public async Task<User?> TryToLogin(UserLogIn request)
         {
-            if (CurrentUser != null)
-                throw new InvalidOperationException("이미 로그인된 상태입니다.");
-
             // DB에서 사용자 확인
-            var user = await _context.users.SingleOrDefaultAsync(u => u.deviceSN == request.deviceSN);
-
-            if (user == null)
+            var user = await _context.users.SingleOrDefaultAsync(u => u.deviceSN == request.deviceSN.ToLower()) ??
                 throw new ArgumentException("해당 기기 정보는 존재하지 않습니다.");
 
             return user;
         }
-
-        public void TryToLogOut(User? CurrentUser)
-        {
-            if (CurrentUser == null)
-                throw new InvalidOperationException("로그인이 되어있지 않은 상태이므로, 로그아웃이 불가능합니다.");
-
-            CurrentUser = null;
-
-        }
-
     }
 }
