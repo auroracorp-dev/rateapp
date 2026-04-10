@@ -63,11 +63,11 @@ public class User
     }
     public void CheckPermissionForDelete(User user)
     {
-        //// 권한 체크
-        //bool isManager = Utils.HasManagerPermission(user.role);
-        //bool isOwner = user.userId == this.userId;
-        //if (!isManager && !isOwner)
-        //    throw new UnauthorizedAccessException("권한 없음");
+        // 권한 체크
+        bool isManager = user.role >= Role.Manager ? true : false;
+        bool isOwner = user.userId == this.userId;
+        if (!isManager && !isOwner)
+            throw new UnauthorizedAccessException("권한 없음");
     }
 }
 public class UserInput
@@ -101,6 +101,7 @@ public class UserInput
         if (TextFilter.ContainsBadWord(this.userName) || TextFilter.ContainsBadWord(this.deviceSN) || TextFilter.ContainsBadWord(this.inviteCode))
             throw new InvalidOperationException("잘못된 입력입니다.");
     }
+
 }
 public class UserOutput
 {

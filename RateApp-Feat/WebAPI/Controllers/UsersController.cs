@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,101 +28,43 @@ namespace WebAPI.Controllers
         [HttpPost("add")]
         public async Task<ActionResult<User>> PostUser([FromBody] UserInput input)
         {
-            try
-            {
-                return await _manager.AddAsync(input);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { message = ex.Message }); // 409
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
+            if (User.Identity?.IsAuthenticated == true)
+                return Forbid("잘못된 접근입니다.");
+            input.Validate();
+            return await _manager.AddAsync(input);
         }
 
         // DELETE: api/delete/id
-        [RequireUser]
-        [HttpDelete("delete/{id}")]
+        [Authorize(Roles = "master,superuser")]
+        [HttpDelete("master/delete/{id}")]
         public async Task<ActionResult> DeleteUser(int id)
         {
-            try
-            {
-                await _manager.DeleteAsync(id);
-                return NoContent();
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
+            await _manager.DeleteAsync(id);
+            return NoContent();
         }
 
         // GET: api/getall
-        [RequireUser]
-        [HttpGet("getall")]
+        [Authorize(Roles = "master,superuser")]
+        [HttpGet("master/getall")]
         public async Task<ActionResult<PagedResult<UserOutput>>> GetUserAll([FromQuery] UserFilter filter)
         {
-            try
-            {
-                return await _manager.GetAllAsync(filter);
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
+            return await _manager.GetAllAsync(filter);
         }
 
         // GET: api/get/id
-        [HttpGet("get/{id}")]
+        [Authorize(Roles ="master,superuser")]
+        [HttpGet("master/get/{id}")]
         public async Task<ActionResult<UserOutput?>> GetUser(int id)
         {
-            try
-            {
-                return await _manager.GetByIdAsync(id);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
+            return await _manager.GetByIdAsync(id);
         }
 
         // GET: api/get/id
-        [HttpPatch("UpdateRole/{id}")]
+        [Authorize(Roles ="superuser")]
+        [HttpPatch("supersuer/updaterole/{id}")]
         public async Task<ActionResult<UserOutput?>> UpdateUserRole(int id, [FromBody] UpdateRole role)
         {
-            try
-            {
-                //var currentUser = AuthController.CurrentUser;
-                //if (currentUser == null)
-                //    return Unauthorized(new { message = "로그인이 필요합니다." });
-                // var result = await _manager.UpdateUsersRole(id, role, currentUser);
-                return Ok("result");
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(new { message = ex.Message });
-            }
-            catch (UnauthorizedAccessException ex)
-            {
-                return StatusCode(403, new { message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return Conflict(new { message = ex.Message }); // 409
-            }
+            return Ok($"{id}유저의 {role.role} 변경 완료");
         }
     }
 }

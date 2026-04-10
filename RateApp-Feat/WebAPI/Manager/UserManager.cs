@@ -12,18 +12,20 @@ namespace WebAPI.Manager
     public class UserManager : IBaseManager<User, UserInput>, IGetAll<UserOutput, UserFilter>, IGetID<UserOutput>
     {
         private readonly AppDbContext _context;
-        public UserManager(AppDbContext context)
+        private readonly CurrentUserService _currentUserService;
+
+        public UserManager(AppDbContext context, CurrentUserService currentUserService)
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
+
         // ================= PUBLIC ================= //
+
         public async Task<User> AddAsync(UserInput input, User? currentUser = null)
         {
-            // var user = AuthController.CurrentUser;
-            //if (user != null)
-            //    throw new Exception("현재 로그인 되어진 계정이 있습니다. 잘못된 접근입니다.");
-            // 권한 체크
-            input.Validate();
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL _ ADD ASYNC _ USER");
             bool exists = await _context.users.AnyAsync(x => x.deviceSN == input.deviceSN || x.userName == input.userName);
             if (exists)
                 throw new InvalidOperationException("이미 존재하는 사용자 정보입니다.");
@@ -33,7 +35,7 @@ namespace WebAPI.Manager
                 throw new InvalidOperationException("이미 사용된 초대 코드입니다.");
             var newUser = new User(input);
 
-            // 추가 처리
+            // 추가 처리 // 트랜젝션 지금 문제 있음 //////////////////////////////////
             using var tx = await _context.Database.BeginTransactionAsync();
             _context.users.Add(newUser);
             invite.SetUsed(newUser.userId);
@@ -43,12 +45,14 @@ namespace WebAPI.Manager
         }
         public async Task DeleteAsync(int id, User? currentUser = null)
         {
-            // 권한 체크
-            // var user = Utils.EnsureUser(currentUser);
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL _ DELETE ASYNC _ USER");
             var targetUser = await GetUserOrThrow(id);
+            if (targetUser.role >= user.role)
+                throw new Exception("보유한 권한 이상의 유저입니다.");
             
             //삭제 처리
-            targetUser.CheckPermissionForDelete(currentUser);
+            targetUser.CheckPermissionForDelete(user);
             using var tx = await _context.Database.BeginTransactionAsync();
             await ResetInvite(targetUser);
             await RemoveUserLikes(targetUser);
@@ -60,7 +64,6 @@ namespace WebAPI.Manager
         }
         public async Task<Utils.PagedResult<UserOutput>> GetAllAsync(UserFilter filter, User? currentUser = null)
         {
-            // var user = Utils.EnsureUser(currentUser);
             IQueryable<User> query = _context.users.AsNoTracking();
             query = QueryFilter(filter, currentUser, query);
             return new PagedResult<UserOutput>
@@ -82,16 +85,11 @@ namespace WebAPI.Manager
         }
         public async Task<UserOutput?> GetByIdAsync(int id, User? currentUser = null)
         {
-            // Utils.EnsureUser(currentUser);
             var user = await GetUserOrThrow(id);
             return DTO<UserOutput, User>.Convert(user);
         }
         public async Task<UserOutput> UpdateUsersRole(int userId, UpdateRole urole, User currentUser)
         {
-            // 권한 체크
-            //var user = Utils.EnsureUser(currentUser);
-            //if (!Utils.HasSuperUserPermission(user.role))
-            //    throw new UnauthorizedAccessException("관리자 변경 권한 없음");
             var targetUser = await GetUserOrThrow(userId);
             if (targetUser.role == urole.role)
                 throw new InvalidOperationException($"이미 {urole.role} 권한입니다.");
@@ -102,6 +100,9 @@ namespace WebAPI.Manager
             return DTO<UserOutput, User>.Convert(targetUser);
         }
         // ================= PRIVATE ================= //
+
+        private async Task<User?> CurrentUser() => await _currentUserService.GetUserAsync();
+
         private async Task<User> GetUserOrThrow(int id)
         {
             return await _context.users.FindAsync(id) ??
