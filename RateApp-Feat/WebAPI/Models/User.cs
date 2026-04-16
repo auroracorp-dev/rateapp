@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Xml.Linq;
@@ -62,11 +63,11 @@ public class User
     }
     public void CheckPermissionForDelete(User user)
     {
-        // 권한 체크
-        bool isManager = Utils.HasManagerPermission(user.role);
-        bool isOwner = user.userId == this.userId;
-        if (!isManager && !isOwner)
-            throw new UnauthorizedAccessException("권한 없음");
+        //// 권한 체크
+        //bool isManager = Utils.HasManagerPermission(user.role);
+        //bool isOwner = user.userId == this.userId;
+        //if (!isManager && !isOwner)
+        //    throw new UnauthorizedAccessException("권한 없음");
     }
 }
 public class UserInput
@@ -116,7 +117,7 @@ public class UserLogIn
     [MaxLength(20)]
     public string deviceSN
     {
-        get => _deviceSN;
+        get => _deviceSN; 
         set => _deviceSN = value?.Trim();
     }
 }

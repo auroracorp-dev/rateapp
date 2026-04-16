@@ -50,10 +50,10 @@ public class Invite
     public void CheckPermissionForDelete(User user)
     {
         // 권한 체크
-        bool isManager = Utils.HasManagerPermission(user.role);
-        bool isOwner = user.userId == this.createdBy;
-        if (!isManager && !isOwner)
-            throw new UnauthorizedAccessException("권한 없음");
+        //bool isManager = Utils.HasManagerPermission(user.role);
+        //bool isOwner = user.userId == this.createdBy;
+        //if (!isManager && !isOwner)
+        //    throw new UnauthorizedAccessException("권한 없음");
     }
 }
 //public class InviteInput

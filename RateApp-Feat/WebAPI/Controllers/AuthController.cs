@@ -1,7 +1,12 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using System.Threading.Tasks;
 using WebAPI.Context;
 using WebAPI.Manager;
@@ -14,48 +19,64 @@ namespace WebAPI.Controllers
     public class AuthController : ControllerBase
     {
         private readonly AuthManager _manager;
+        private readonly IConfiguration _config;
         // TEMP STATIC CURRENT USER LINE
-        public static User? CurrentUser { get; private set; } 
-        public AuthController(AuthManager manager)
+        // public static User? CurrentUser { get; private set; } 
+        public AuthController(AuthManager manager, IConfiguration config)
         {
             _manager = manager;
+            _config = config;
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login(UserLogIn request)
         {
-            try
-            {
-                var user = await _manager.TryToLogin(request, CurrentUser);
-                CurrentUser = user;
+            var user = await _manager.TryToLogin(request);
 
-                return Ok(new { user.deviceSN });
-            }
-            catch (InvalidOperationException ex)
+            if (user == null)
             {
-                return Conflict(new { message = ex.Message }); // 409
+                return Unauthorized(new { message = "잘못된 접근입니다." });
             }
-            catch (ArgumentException ex)
+            var token = GenerateJwtToken(user);
+
+            return Ok(new
             {
-                return Unauthorized(new { message = ex.Message });
-            }
+                token,
+                user.deviceSN
+            });
         }
+        [Authorize]
         [HttpPost("logout")]
-        public IActionResult LogOut()
+        public IActionResult Logout()
         {
-            try
-            {
-                _manager.TryToLogOut(CurrentUser);
+            return Ok("Logged out");
+        }
 
-                // ⭐ 여기 핵심
-                CurrentUser = null;
+        private string GenerateJwtToken(User user)
+        {
+            var jwtKey = _config["Jwt:Key"];
 
-                return Ok("LOG OUT.");
-            }
-            catch (InvalidOperationException ex)
+            if (string.IsNullOrEmpty(jwtKey))
+                throw new Exception("Jwt:Key is missing in configuration");
+
+            var key = new SymmetricSecurityKey(Convert.FromBase64String(jwtKey));
+
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
             {
-                return Conflict(new { message = ex.Message });
-            }
+                new Claim(ClaimTypes.NameIdentifier, user.userId.ToString()),
+                new Claim("deviceSN", user.deviceSN),
+                new Claim(ClaimTypes.Role, user.role.ToString().ToLower()),
+            };
+
+            var token = new JwtSecurityToken(
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(30),
+                signingCredentials: creds
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
 }

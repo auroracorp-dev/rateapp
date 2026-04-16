@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Authentication;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using WebAPI.Context;
 using WebAPI.Controllers;
@@ -15,9 +17,12 @@ namespace WebAPI.Manager
     public class InviteManager : IBaseManager<Invite, Unit>, IGetAll<InviteOutput, InviteFilter>, IGet<InviteOutput>
     {
         private readonly AppDbContext _context;
-        public InviteManager(AppDbContext context)
+        private readonly CurrentUserService _currentUserService;
+
+        public InviteManager(AppDbContext context, CurrentUserService currentUserService)
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
 
         // ============ PUBLIC FUNC LINE ============ //
@@ -28,8 +33,6 @@ namespace WebAPI.Manager
             if (count <= 0 || count >= MAX_COUNT)
                 throw new Exception("입력 범위 초과");
 
-            var user = Utils.EnsureUser(currentUser);
-
             for (int i = 0; i < count; i++)
             {
                 await AddAsync(new Unit(), currentUser);
@@ -37,12 +40,7 @@ namespace WebAPI.Manager
         }
         public async Task<Invite> AddAsync(Unit input, User? currentUser = null)
         {
-            // 현재 유저 체크
-            var user = Utils.EnsureUser(currentUser);
-
-            // 권한 체크
-            if (!Utils.HasSuperUserPermission(user.role))
-                throw new UnauthorizedAccessException("초대 코드 생성 권한 없음");
+            var user = await CurrentUser();
 
             Invite invite = new Invite();
             string randomCode = await GenerateUniqueInviteCode(user);
@@ -57,14 +55,8 @@ namespace WebAPI.Manager
 
         public async Task DeleteAsync(int id, User? currentUser = null)
         {
-            // 현재 유저 체크
-            var user = Utils.EnsureUser(currentUser);
-
             var invite = await _context.invite.FindAsync(id) ??
                 throw new KeyNotFoundException("초대 코드 없음");
-
-            // 권한 체크
-            invite.CheckPermissionForDelete(user);
 
             // 사용중 체크
             if (invite.IsUsed)
@@ -77,35 +69,35 @@ namespace WebAPI.Manager
 
         public async Task<PagedResult<InviteOutput>> GetAllAsync(InviteFilter filter, User? currentUser = null)
         {
-            var user = Utils.EnsureUser(currentUser);
-
             var query = _context.invite.Include(i => i.Creator).AsQueryable();
-            query = QueryFilter(filter, user, query);
+            query = QueryFilter(filter, query);
 
             return new PagedResult<InviteOutput>
             {
+                TotalCount = await query.CountAsync(),
                 Items = await PagingHelper.GetPageData<Invite, InviteOutput, DateTime>(
-                        query, filter.page, i => i.createDate, i => new InviteOutput
-                        {
-                            inviteId = i.inviteId,
-                            inviteCode = i.inviteCode,
-                            IsUsed = i.IsUsed,
-                            createdByName = i.Creator != null ? i.Creator.userName : "알 수 없음"
-                        }, true
-                    ),
-                TotalCount = await query.CountAsync()
+                    query, filter.page, i => i.createDate, i => new InviteOutput
+                    {
+                        inviteId = i.inviteId,
+                        inviteCode = i.inviteCode,
+                        IsUsed = i.IsUsed,
+                        createdByName = i.Creator != null ? i.Creator.userName : "알 수 없음"
+                    },
+                    true
+                ),
             };
         }
 
         public async Task<InviteOutput?> GetByAsync(User? currentUser = null)
         {
-            // 현재 유저 체크
-            var user = Utils.EnsureUser(currentUser);
+            var user = await CurrentUser();
             var invite = await GetOrAllocateInviteForUser(user);
             return DTO<InviteOutput, Invite>.Convert(invite);
         }
 
         // ============ PRIVATE FUNC LINE ============ //
+
+        private async Task<User?> CurrentUser() => await _currentUserService.GetUserAsync();
 
         private async Task<string> GenerateUniqueInviteCode(User user)
         {
@@ -137,11 +129,8 @@ namespace WebAPI.Manager
             return unused;
         }
 
-        private IQueryable<Invite> QueryFilter(InviteFilter filter, User user, IQueryable<Invite> query)
+        private IQueryable<Invite> QueryFilter(InviteFilter filter, IQueryable<Invite> query)
         {
-            // 필터
-            if (!Utils.HasManagerPermission(user.role))
-                throw new UnauthorizedAccessException("권한 없음");
             if (filter.IsUsed.HasValue)
             {
                 query = query.Where(i => i.IsUsed == filter.IsUsed.Value);
@@ -159,10 +148,6 @@ namespace WebAPI.Manager
 
         private IQueryable<Invite> QueryFilterFromRaw(InviteFilter filter, User user, IQueryable<Invite> query)
         {
-            // 관리자 권한 전체 공개
-            if (!Utils.HasManagerPermission(user.role))
-                throw new UnauthorizedAccessException("권한 없음");
-
             filter.createdByName ??= "";
 
             string sql = $@"

@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 namespace WebAPI.Models;
 
@@ -80,14 +81,14 @@ public class Building
         // 0~10 사이 제한
         this.avgRating = Math.Clamp(this.avgRating, 0, 10);
     }
-    public void CheckPermissionForDelete(User user)
-    {
-        // 권한 체크
-        bool isManager = Utils.HasManagerPermission(user.role);
-        bool isOwner = user.userId == this.uploadUserId;
-        if (!isManager && !isOwner)
-            throw new UnauthorizedAccessException("권한 없음");
-    }
+    //public void CheckPermissionForDelete(User user)
+    //{
+    //    // 권한 체크
+    //    bool isManager = Utils.HasManagerPermission(user.role);
+    //    bool isOwner = user.userId == this.uploadUserId;
+    //    if (!isManager && !isOwner)
+    //        throw new UnauthorizedAccessException("권한 없음");
+    //}
 }
 public class BuildingInput
 {
@@ -142,9 +143,12 @@ public class BuildingFilter
     [Range(0, ushort.MaxValue)] public int maxReviewCount { get; set; } = ushort.MaxValue;
     public string? uploadUserName { get; set; }
     // 초기 위도,경도 (0,0) = null island
-    [Range(-90, 90)] public double curLat { get; set; } = 0;     // 내 위도 => 현재 좌표 입력 자동 받게
-    [Range(-180, 180)] public double curLng { get; set; } = 0;	// 내 경도 => 현재 좌표 입력 자동 받게
+    private const int MAX_LAT = 90;
+    [Range(-MAX_LAT, MAX_LAT)] public double curLat { get; set; } = 0;     // 내 위도 => 현재 좌표 입력 자동 받게
+    private const int MAX_LNG = 180;
+    [Range(-MAX_LNG, MAX_LNG)] public double curLng { get; set; } = 0;	// 내 경도 => 현재 좌표 입력 자동 받게
     // 기본 1km 범위 반경으로만 출력
-    public double range { get; set; } = 1;
+    private const int MAX_RAGNE = 30;
+    [Range(0, MAX_RAGNE)] public double range { get; set; } = 1;
 }
 

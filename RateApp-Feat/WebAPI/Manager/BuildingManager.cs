@@ -8,20 +8,21 @@ namespace WebAPI.Manager
     public class BuildingManager : IBaseManager<Building, BuildingInput>, IGetAll<BuildingOutput, BuildingFilter>, IGetID<BuildingOutput>
     {
         private readonly AppDbContext _context;
-        public BuildingManager(AppDbContext context)
+        private readonly CurrentUserService _currentUserService;
+
+        public BuildingManager(AppDbContext context, CurrentUserService currentUserService)
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
 
         // ============ PUBLIC FUNC LINE ============ //
 
         public async Task<Building> AddAsync(BuildingInput input, User? currentUser = null)
         {
-            var user = Utils.EnsureUser(currentUser);
+            var user = await CurrentUser();
 
-            input.Validate();
-
-            await CheckExistForAdd(input);
+            await EnsureCanCreateBuilding(input);
 
             var building = new Building(input, user);
 
@@ -36,13 +37,6 @@ namespace WebAPI.Manager
             var building = await _context.building.FindAsync(id)
                 ?? throw new KeyNotFoundException("해당 건물은 존재하지 않습니다.");
 
-            // 현재 유저 체크
-            var user = Utils.EnsureUser(currentUser);
-
-            // 권한 체크 
-            building.CheckPermissionForDelete(user);
-
-            // FK review LIST 전부 제거 후 빌딩 제거 
             var reviews = await _context.review.Where(r => r.buildingId == building.buildingId).ToListAsync();
             _context.review.RemoveRange(reviews);
             _context.building.Remove(building);
@@ -51,8 +45,6 @@ namespace WebAPI.Manager
         }
         public async Task<Utils.PagedResult<BuildingOutput>> GetAllAsync(BuildingFilter filter, User? currentUser = null)
         {
-            var user = Utils.EnsureUser(currentUser);
-
             // 전체 쿼리
             IQueryable<Building> query = _context.building;
 
@@ -89,12 +81,13 @@ namespace WebAPI.Manager
 
         // ============ PRIVATE FUNC LINE ============ //
 
-        private async Task CheckExistForAdd(BuildingInput input)
+        private async Task<User?> CurrentUser() => await _currentUserService.GetUserAsync();
+
+        private async Task EnsureCanCreateBuilding(BuildingInput input)
         {
             // 건물 체크
             bool exists = await _context.building.AnyAsync(b =>
-            TextFilter.CompareText(b.buildingName, input.buildingName) || TextFilter.CompareText(b.buildingAddress, input.buildingAddress)
-            );
+                (b.buildingName == input.buildingName.ToLower()) || (b.buildingAddress == input.buildingAddress.ToLower()));
             if (exists)
                 throw new InvalidOperationException("이미 존재하는 건물 (이름 또는 주소) 입니다.");
         }
@@ -115,6 +108,33 @@ namespace WebAPI.Manager
                     EF.Functions.Like(b.UploadUser.userName, $"%{filter.uploadUserName}%"));
 
             return FilterToRange(filter, query);
+        }
+        private IQueryable<Building> FilterToRange(BuildingFilter filter, IQueryable<Building> query)
+        {
+            const double Degree = 111.0;
+
+            double lat = filter.curLat;
+            double lng = filter.curLng;
+            double range = filter.range;
+
+            // 바운더리 체크
+            double latRange = range / Degree;
+            double lngRange = range / (Degree * Math.Cos(lat * Math.PI / 180));
+            query = query.Where(b => b.latitude >= lat - latRange && b.latitude <= lat + latRange &&
+                b.longitude >= lng - lngRange && b.longitude <= lng + lngRange
+            );
+
+            // 범위 체크
+            double rangeSquared = Math.Pow(range / Degree, 2);
+
+            query = query.Where(b => Math.Pow(b.latitude - lat, 2) + Math.Pow(b.longitude - lng, 2)
+                <= rangeSquared
+            );
+
+            // 거리 순 정렬
+            query = query.OrderBy(b => Math.Pow(b.latitude - lat, 2) + Math.Pow(b.longitude - lng, 2)
+);
+            return query;
         }
         // Query 버전
         private IQueryable<Building> QueryFilterFromRaw(BuildingFilter filter)
@@ -149,33 +169,6 @@ namespace WebAPI.Manager
                   AND POWER(b.latitude - {lat}, 2) + POWER(b.longitude - {lng}, 2) <= {rangeSquared}
                 ORDER BY POWER(b.latitude - {lat}, 2) + POWER(b.longitude - {lng}, 2)
             ");
-        }
-        private IQueryable<Building> FilterToRange(BuildingFilter filter, IQueryable<Building> query)
-        {
-            const double Degree = 111.0;
-
-            double lat = filter.curLat;
-            double lng = filter.curLng;
-            double range = filter.range;
-
-            // 바운더리 체크
-            double latRange = range / Degree;
-            double lngRange = range / (Degree * Math.Cos(lat * Math.PI / 180));
-            query = query.Where(b => b.latitude >= lat - latRange && b.latitude <= lat + latRange &&
-                b.longitude >= lng - lngRange && b.longitude <= lng + lngRange
-            );
-
-            // 범위 체크
-            double rangeSquared = Math.Pow(range / Degree, 2);
-
-            query = query.Where(b => Math.Pow(b.latitude - lat, 2) + Math.Pow(b.longitude - lng, 2)
-                <= rangeSquared
-            );
-
-            // 거리 순 정렬
-            query = query.OrderBy(b => Math.Pow(b.latitude - lat, 2) + Math.Pow(b.longitude - lng, 2)
-);
-            return query;
         }
     }
 }

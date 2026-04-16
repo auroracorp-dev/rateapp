@@ -34,41 +34,41 @@ public static class Utils
         return new string(code);
     }
 
-    public static bool HasManagerPermission(Role user)
-    {
-        return user >= Role.Manager;
-    }
+    //public static bool HasManagerPermission(Role user)
+    //{
+    //    return user >= Role.Manager;
+    //}
 
-    public static bool HasSuperUserPermission(Role user)
-    {
-        return user >= Role.SuperUser;
-    }
+    //public static bool HasSuperUserPermission(Role user)
+    //{
+    //    return user >= Role.SuperUser;
+    //}
 
     public class RequireUserAttribute : ActionFilterAttribute
     {
         public override void OnActionExecuting(ActionExecutingContext context)
         {
-            if (AuthController.CurrentUser == null)
-            {
-                context.Result = new UnauthorizedResult();
-            }
+            context.Result = new UnauthorizedResult();
+            //if (AuthController.CurrentUser == null)
+            //{
+            //}
         }
     }
 
-    public static User EnsureUser(User? user)
-    {
-        if (user != null) return user;
+    //public static User EnsureUser(User? user)
+    //{
+    //    if (user != null) return user;
 
-        var currentUser = AuthController.CurrentUser;
-        if (currentUser != null) return currentUser;
+    //    var currentUser = AuthController.CurrentUser;
+    //    if (currentUser != null) return currentUser;
 
-        throw new UnauthorizedAccessException("로그인 필요");
-    }
+    //    throw new UnauthorizedAccessException("로그인 필요");
+    //}
 
     public class PagedResult<T>
     {
-        public List<T> Items { get; set; }
         public int TotalCount { get; set; }
+        public List<T> Items { get; set; }
     }
 
     public const int pageCount = 10;
@@ -99,9 +99,6 @@ public static class TextFilter
 
         return false;
     }
-
-    public static bool CompareText(string input1, string input2)
-        { return input1.ToLower() == input2.ToLower(); }
 }
 
 public static class PagingHelper
