@@ -1,24 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using WebAPI.Context;
 using WebAPI.Manager.Interfaces;
 using WebAPI.Models;
 
 namespace WebAPI.Manager
 {
-    public class BuildingManager : IBaseManager<Building, BuildingInput>, IGetAll<BuildingOutput, BuildingFilter>, IGetID<BuildingOutput>
+    public class BuildingManager : IBaseManager<Building, BuildingInput>, IGetAll<BuildingOutput, BuildingFilter>, IGetID<BuildingOutput>, IUpdate<BuildingOutput, BuildingUpdateInput>
     {
         private readonly AppDbContext _context;
         private readonly CurrentUserService _currentUserService;
+        private readonly IMapper _mapper;
 
-        public BuildingManager(AppDbContext context, CurrentUserService currentUserService)
+        public BuildingManager(AppDbContext context, CurrentUserService currentUserService, IMapper mapper)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _mapper = mapper;
         }
 
         // ============ PUBLIC FUNC LINE ============ //
 
-        public async Task<Building> AddAsync(BuildingInput input, User? currentUser = null)
+        public async Task<Building> AddAsync(BuildingInput input)
         {
             var user = await CurrentUser() ??
                 throw new Exception("USER IS NULL _ ADD ASYNC _ BUILDING");
@@ -32,7 +35,7 @@ namespace WebAPI.Manager
 
             return building;
         }
-        public async Task DeleteAsync(int id, User? currentUser = null)
+        public async Task DeleteAsync(int id)
         {
             // 건물 체크
             var building = await _context.building.FindAsync(id)
@@ -44,7 +47,7 @@ namespace WebAPI.Manager
 
             await _context.SaveChangesAsync();
         }
-        public async Task<Utils.PagedResult<BuildingOutput>> GetAllAsync(BuildingFilter filter, User? currentUser = null)
+        public async Task<Utils.PagedResult<BuildingOutput>> GetAllAsync(BuildingFilter filter)
         {
             // 전체 쿼리
             IQueryable<Building> query = _context.building;
@@ -70,7 +73,7 @@ namespace WebAPI.Manager
                 TotalCount = await query.CountAsync()
             };
         }
-        public async Task<BuildingOutput?> GetByIdAsync(int id, User? currentUser = null)
+        public async Task<BuildingOutput?> GetByIdAsync(int id)
         {
             // 건물 체크
             var building = await _context.building.FindAsync(id) ??
@@ -78,6 +81,28 @@ namespace WebAPI.Manager
 
             // 조회한 id값 출력
             return DTO<BuildingOutput, Building>.Convert(building);
+        }
+
+        public async Task<BuildingOutput?> UpdateAsync(int id, BuildingUpdateInput updateInput)
+        {
+            updateInput.Validate();
+            // 유저 체크
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL_UPDATE_ASYNC_BUILDING");
+            // 해당 건물 정보 취득
+            var target = await _context.building.FindAsync(id) ??
+                throw new KeyNotFoundException("해당 건물은 존재하지 않습니다).");
+            // 자기자신이 작성한 글 || 관리자 권한
+            if (!user.IsMine(target.uploadUserId) && !user.HasManagerPermission())
+                throw new Exception("권한이 없습니다.");
+
+            // aft_buildingInput의 프로퍼티에서 값이 있는 애만 수정하고 없는 애는 bef_의 값 그대로
+            // 사용하게 하고 싶다.
+            _mapper.Map(updateInput, target);
+
+            await _context.SaveChangesAsync();
+
+            return _mapper.Map<BuildingOutput>(target);
         }
 
         // ============ PRIVATE FUNC LINE ============ //

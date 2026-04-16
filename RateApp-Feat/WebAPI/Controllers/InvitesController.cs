@@ -14,6 +14,7 @@ using static Utils;
 
 namespace WebAPI.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class inviteController : ControllerBase
@@ -52,7 +53,6 @@ namespace WebAPI.Controllers
         }
 
         // GET: api/get
-        [Authorize]
         [HttpGet("get")]
         public async Task<ActionResult<InviteOutput?>> Getinvite()
         {

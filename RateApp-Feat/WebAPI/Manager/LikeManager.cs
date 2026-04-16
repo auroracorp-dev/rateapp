@@ -17,7 +17,7 @@ namespace WebAPI.Manager
 
         // ============ PUBLIC FUNC LINE ============ //
 
-        public async Task<LikeToggleResult> ToggleAsync(LikeInput input, User? currentUser = null)
+        public async Task<LikeToggleResult> ToggleAsync(LikeInput input)
         {
             var user = await CurrentUser() ??
                 throw new Exception("USER IS NULL _ TOGGLE ASYNC");

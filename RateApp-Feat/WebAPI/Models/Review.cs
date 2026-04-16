@@ -81,6 +81,23 @@ public class ReviewInput
     }
 }
 
+public class ReviewUpdateInput
+{
+    public int? buildingId { get; set; }
+    [Range(0, 10, ErrorMessage = "별점은 0에서 10 사이여야 합니다.")]
+    public int? rating { get; set; }
+    [MinLength(6)]
+    [MaxLength(50)]
+    private string? comment = "";
+    public void Validate()
+    {
+        if (string.IsNullOrEmpty(comment))
+            return;
+        if (TextFilter.ContainsBadWord(comment))
+            throw new InvalidOperationException("잘못된 입력입니다.");
+    }
+}
+
 public class ReviewOutput
 {
     public int reviewId { get; set; } = 0;

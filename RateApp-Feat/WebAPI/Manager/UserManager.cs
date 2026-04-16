@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using WebAPI.Context;
@@ -9,60 +10,67 @@ using static Utils;
 
 namespace WebAPI.Manager
 {
-    public class UserManager : IBaseManager<User, UserInput>, IGetAll<UserOutput, UserFilter>, IGetID<UserOutput>
+    public class UserManager : IBaseManager<User, UserInput>, IGetAll<UserOutput, UserFilter>, IGetID<UserOutput>, IUpdate<UserOutput, UserUpdateInput>
     {
         private readonly AppDbContext _context;
-        public UserManager(AppDbContext context)
+        private readonly CurrentUserService _currentUserService;
+        private readonly IMapper _mapper;
+
+        public UserManager(AppDbContext context, CurrentUserService currentUserService, IMapper mapper)
         {
             _context = context;
+            _currentUserService = currentUserService;
+            _mapper = mapper;
         }
+
         // ================= PUBLIC ================= //
-        public async Task<User> AddAsync(UserInput input, User? currentUser = null)
+
+        public async Task<User> AddAsync(UserInput input)
         {
-            // var user = AuthController.CurrentUser;
-            //if (user != null)
-            //    throw new Exception("현재 로그인 되어진 계정이 있습니다. 잘못된 접근입니다.");
-            // 권한 체크
-            input.Validate();
+            if(await CurrentUser() != null)
+                throw new Exception("USER IS NULL _ ADD ASYNC _ USER");
             bool exists = await _context.users.AnyAsync(x => x.deviceSN == input.deviceSN || x.userName == input.userName);
             if (exists)
                 throw new InvalidOperationException("이미 존재하는 사용자 정보입니다.");
-            var invite = await _context.invite.FirstOrDefaultAsync(x => x.inviteCode == input.inviteCode) ??
+            var invite = await _context.invite.FirstOrDefaultAsync(x => x.inviteCode.ToLower() == input.inviteCode.ToLower()) ??
                 throw new KeyNotFoundException("해당 초대 코드가 존재하지 않습니다.");
             if (invite.IsUsed)
                 throw new InvalidOperationException("이미 사용된 초대 코드입니다.");
             var newUser = new User(input);
-
-            // 추가 처리
-            using var tx = await _context.Database.BeginTransactionAsync();
+            // 추가 처리 // 트랜젝션 지금 문제 있음 //////////////////////////////////
+            // using var tx = await _context.Database.BeginTransactionAsync();
             _context.users.Add(newUser);
+            await _context.SaveChangesAsync();
             invite.SetUsed(newUser.userId);
             await _context.SaveChangesAsync();
-            await tx.CommitAsync();
+            // await tx.CommitAsync();
             return newUser;
         }
-        public async Task DeleteAsync(int id, User? currentUser = null)
+        public async Task DeleteAsync(int id)
         {
-            // 권한 체크
-            // var user = Utils.EnsureUser(currentUser);
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL_DELETE ASYNC_USER");
             var targetUser = await GetUserOrThrow(id);
+            if (targetUser.role >= user.role)
+                throw new Exception("보유한 권한 이상의 유저입니다.");
             
             //삭제 처리
-            targetUser.CheckPermissionForDelete(currentUser);
-            using var tx = await _context.Database.BeginTransactionAsync();
+            targetUser.CheckPermissionForDelete(user);
+            // using var tx = await _context.Database.BeginTransactionAsync();
             await ResetInvite(targetUser);
             await RemoveUserLikes(targetUser);
             await RemoveUserReviews(targetUser);
             await RemoveUserBuildings(targetUser);
             _context.users.Remove(targetUser);
             await _context.SaveChangesAsync();
-            await tx.CommitAsync();
+            // await tx.CommitAsync();
         }
-        public async Task<Utils.PagedResult<UserOutput>> GetAllAsync(UserFilter filter, User? currentUser = null)
+        public async Task<Utils.PagedResult<UserOutput>> GetAllAsync(UserFilter filter)
         {
-            // var user = Utils.EnsureUser(currentUser);
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL_GET_ALL ASYNC_USER");
             IQueryable<User> query = _context.users.AsNoTracking();
-            query = QueryFilter(filter, currentUser, query);
+            query = QueryFilter(filter, user, query);
             return new PagedResult<UserOutput>
             {
                 Items = await PagingHelper.GetPageData(
@@ -80,18 +88,13 @@ namespace WebAPI.Manager
                 TotalCount = await query.CountAsync()
             };
         }
-        public async Task<UserOutput?> GetByIdAsync(int id, User? currentUser = null)
+        public async Task<UserOutput?> GetByIdAsync(int id)
         {
-            // Utils.EnsureUser(currentUser);
             var user = await GetUserOrThrow(id);
             return DTO<UserOutput, User>.Convert(user);
         }
-        public async Task<UserOutput> UpdateUsersRole(int userId, UpdateRole urole, User currentUser)
+        public async Task<UserOutput> UpdateUsersRole(int userId, UpdateRole urole)
         {
-            // 권한 체크
-            //var user = Utils.EnsureUser(currentUser);
-            //if (!Utils.HasSuperUserPermission(user.role))
-            //    throw new UnauthorizedAccessException("관리자 변경 권한 없음");
             var targetUser = await GetUserOrThrow(userId);
             if (targetUser.role == urole.role)
                 throw new InvalidOperationException($"이미 {urole.role} 권한입니다.");
@@ -101,7 +104,32 @@ namespace WebAPI.Manager
 
             return DTO<UserOutput, User>.Convert(targetUser);
         }
+        public async Task<UserOutput?> UpdateAsync(int id, UserUpdateInput updateInput)
+        {
+            updateInput.Validate();
+
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL_UPDATE_ASYNC_USER");
+            // 해당 건물 정보 취득
+            var target = await _context.users.FindAsync(id) ??
+                throw new KeyNotFoundException("해당 유저는 존재하지 않습니다).");
+            // 자기자신이 작성한 글 || 관리자 권한
+            if (!user.IsMine(target.userId) && !user.HasManagerPermission())
+                throw new Exception("권한이 없습니다.");
+
+            // aft_buildingInput의 프로퍼티에서 값이 있는 애만 수정하고 없는 애는 bef_의 값 그대로
+            // 사용하게 하고 싶다.
+            _mapper.Map(updateInput, target);
+
+            await _context.SaveChangesAsync();
+
+            return _mapper.Map<UserOutput>(target);
+
+        }
         // ================= PRIVATE ================= //
+
+        private async Task<User?> CurrentUser() => await _currentUserService.GetUserAsync();
+
         private async Task<User> GetUserOrThrow(int id)
         {
             return await _context.users.FindAsync(id) ??
@@ -162,5 +190,6 @@ namespace WebAPI.Manager
             var buildings = await _context.building.Where(b => b.uploadUserId == targetUser.userId).ToListAsync();
             _context.building.RemoveRange(buildings);
         }
+
     }
 }

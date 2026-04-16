@@ -6,10 +6,10 @@ namespace WebAPI.Manager.Interfaces
     public interface IBaseManager<TEntity, TInput>
     {
         // 추가
-        Task<TEntity> AddAsync(TInput input, User? currentUser = null);
+        Task<TEntity> AddAsync(TInput input);
 
         // 삭제
-        Task DeleteAsync(int id, User? currentUser = null);
+        Task DeleteAsync(int id);
     }
 
 }

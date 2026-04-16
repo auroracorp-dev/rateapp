@@ -1,6 +1,7 @@
 ﻿using Dapper;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Npgsql;
@@ -34,18 +35,21 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     builder.Services.AddScoped<IBaseManager<Review, ReviewInput>, ReviewManager>();
     builder.Services.AddScoped<IGetAll<ReviewOutput, ReviewFilter>, ReviewManager>();
     builder.Services.AddScoped<IGetID<ReviewOutput>, ReviewManager>();
+    builder.Services.AddScoped<IUpdate<ReviewOutput, ReviewUpdateInput>, ReviewManager>();
     builder.Services.AddScoped<ReviewManager>();
 
     // Building 연결
     builder.Services.AddScoped<IBaseManager<Building, BuildingInput>, BuildingManager>();
     builder.Services.AddScoped<IGetAll<BuildingOutput, BuildingFilter>, BuildingManager>();
     builder.Services.AddScoped<IGetID<BuildingOutput>, BuildingManager>();
+    builder.Services.AddScoped<IUpdate<BuildingOutput, BuildingUpdateInput>, BuildingManager>();
     builder.Services.AddScoped<BuildingManager>();
 
     // User 연결
     builder.Services.AddScoped<IBaseManager<User, UserInput>, UserManager>();
     builder.Services.AddScoped<IGetAll<UserOutput, UserFilter>, UserManager>();
     builder.Services.AddScoped<IGetID<UserOutput>, UserManager>();
+    builder.Services.AddScoped<IUpdate<UserOutput, UserUpdateInput>, UserManager>();
     builder.Services.AddScoped<UserManager>();
 
     // Like 연결
@@ -120,7 +124,11 @@ builder.Services.AddSwaggerGen();
     });
     builder.Services.AddHttpContextAccessor();
 }
-
+builder.Services.AddAutoMapper(cfg =>
+{
+    cfg.AddMaps(AppDomain.CurrentDomain.GetAssemblies());
+});
+// builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 // ======================= 빌드 ======================= //
 
