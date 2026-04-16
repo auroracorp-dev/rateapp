@@ -25,6 +25,7 @@ namespace WebAPI.Controllers
         }
 
         // POST: api/add
+        [AllowAnonymous]
         [HttpPost("add")]
         public async Task<ActionResult<User>> PostUser([FromBody] UserInput input)
         {
@@ -64,7 +65,18 @@ namespace WebAPI.Controllers
         [HttpPatch("supersuer/updaterole/{id}")]
         public async Task<ActionResult<UserOutput?>> UpdateUserRole(int id, [FromBody] UpdateRole role)
         {
+            await _manager.UpdateUsersRole(id, role);
             return Ok($"{id}유저의 {role.role} 변경 완료");
         }
+
+        // GET: api/get/id
+        [Authorize]
+        [HttpPatch("update/{id}")]
+        public async Task<ActionResult<UserOutput?>> UpdateUser(int id, [FromBody] UserUpdateInput updateInput)
+        {
+            await _manager.UpdateAsync(id, updateInput);
+            return Ok($"{id}유저 정보 변경 완료");
+        }
+
     }
 }

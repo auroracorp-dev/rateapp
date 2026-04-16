@@ -13,6 +13,7 @@ using static Utils;
 
 namespace WebAPI.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class reviewController : ControllerBase
@@ -25,7 +26,6 @@ namespace WebAPI.Controllers
         }
 
         // POST: api/add
-        [Authorize]
         [HttpPost("add")]
         public async Task<ActionResult<Review>> PostReview([FromBody] ReviewInput input)
         {
@@ -34,7 +34,6 @@ namespace WebAPI.Controllers
         }
 
         // DELETE: api/delete/id
-        [Authorize]
         [HttpDelete("delete/{id}")]
         public async Task<ActionResult> DeleteReview(int id)
         {
@@ -43,7 +42,6 @@ namespace WebAPI.Controllers
         }
 
         // GET: api/getall
-        [Authorize]
         [HttpGet("getall")]
         public async Task<ActionResult<PagedResult<ReviewOutput>>> GetReviewAll([FromQuery] ReviewFilter filter)
         {
@@ -51,11 +49,17 @@ namespace WebAPI.Controllers
         }
 
         // GET: api/get/id
-        [Authorize]
         [HttpGet("get/{id}")]
         public async Task<ActionResult<ReviewOutput?>> GetReview(int id)
         {
             return await _manager.GetByIdAsync(id);
+        }
+
+        // GET: api/get/id
+        [HttpPatch("update/{id}")]
+        public async Task<ActionResult<ReviewOutput?>> UpdateReview(int id, [FromQuery]ReviewUpdateInput update)
+        {
+            return await _manager.UpdateAsync(id, update);
         }
     }
 }

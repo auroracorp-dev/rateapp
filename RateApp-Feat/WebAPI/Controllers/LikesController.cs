@@ -6,6 +6,7 @@ using static Utils;
 
 namespace WebAPI.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class review_likeController : ControllerBase
@@ -17,7 +18,6 @@ namespace WebAPI.Controllers
             _manager = manager;
         }
 
-        [Authorize]
         [HttpPost("toggle")]
         public async Task<ActionResult<object>> ToggleLike([FromBody] LikeInput input)
         {

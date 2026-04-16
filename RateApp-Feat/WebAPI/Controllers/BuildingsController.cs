@@ -13,6 +13,7 @@ using static Utils;
 
 namespace WebAPI.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class buildingController : ControllerBase
@@ -25,7 +26,6 @@ namespace WebAPI.Controllers
         }
 
         // POST: api/add
-        [Authorize]
         [HttpPost("add")]
         public async Task<ActionResult<Building>> PostBuilding([FromBody] BuildingInput input)
         {
@@ -44,7 +44,6 @@ namespace WebAPI.Controllers
         }
 
         // GET: api/getall
-        [Authorize]
         [HttpGet("getall")]
         public async Task<ActionResult<PagedResult<BuildingOutput>>> GetBuildingAll([FromQuery] BuildingFilter filter)
         {
@@ -52,11 +51,17 @@ namespace WebAPI.Controllers
         }
 
         // GET: api/get/id
-        [Authorize]
         [HttpGet("get/{id}")]
         public async Task<ActionResult<BuildingOutput?>> GetBuilding(int id)
         {
             return await _manager.GetByIdAsync(id);
+        }
+
+        // GET: api/get/id
+        [HttpPatch("update/{id}")]
+        public async Task<ActionResult<BuildingOutput?>> PatchBuilding(int id, [FromQuery] BuildingUpdateInput value)
+        {
+            return await _manager.UpdateAsync(id, value);
         }
     }
 }

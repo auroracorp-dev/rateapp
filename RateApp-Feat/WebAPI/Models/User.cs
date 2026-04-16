@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Xml.Linq;
+using WebAPI.Models;
 
 namespace WebAPI.Models;
 
@@ -61,6 +62,18 @@ public class User
         if (this.Point <= 0)
             this.Point = 0;
     }
+    public bool HasSuperUserPermission()
+    {
+        return role >= Role.SuperUser;
+    }
+    public bool HasManagerPermission()
+    {
+        return role >= Role.Manager;
+    }
+    public bool IsMine(int _userId)
+    {
+        return userId == _userId;
+    }
     public void CheckPermissionForDelete(User user)
     {
         // 권한 체크
@@ -101,8 +114,23 @@ public class UserInput
         if (TextFilter.ContainsBadWord(this.userName) || TextFilter.ContainsBadWord(this.deviceSN) || TextFilter.ContainsBadWord(this.inviteCode))
             throw new InvalidOperationException("잘못된 입력입니다.");
     }
-
 }
+public class UserUpdateInput
+{
+    [MaxLength(20)]
+    public string? deviceSN { get; set; } = null;
+    [MaxLength(20)]
+    public string? userName { get; set; } = null;
+    public void Validate()
+    {
+        if (!string.IsNullOrEmpty(userName) && TextFilter.ContainsBadWord(userName))
+            throw new InvalidOperationException("잘못된 입력입니다.");
+
+        if (!string.IsNullOrEmpty(deviceSN) && TextFilter.ContainsBadWord(deviceSN))
+            throw new InvalidOperationException("잘못된 입력입니다.");
+    }
+}
+
 public class UserOutput
 {
     //public string deviceSN { get; set; } = "";

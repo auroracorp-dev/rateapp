@@ -17,7 +17,7 @@ namespace WebAPI.Manager
         public async Task<User?> TryToLogin(UserLogIn request)
         {
             // DB에서 사용자 확인
-            var user = await _context.users.SingleOrDefaultAsync(u => u.deviceSN == request.deviceSN.ToLower()) ??
+            var user = await _context.users.SingleOrDefaultAsync(u => u.deviceSN.ToLower() == request.deviceSN.ToLower()) ??
                 throw new ArgumentException("해당 기기 정보는 존재하지 않습니다.");
 
             return user;

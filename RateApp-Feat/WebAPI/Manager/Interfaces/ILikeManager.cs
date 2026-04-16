@@ -3,5 +3,5 @@ namespace WebAPI.Manager;
 
 public interface ILikeManager
 {
-    Task<LikeToggleResult> ToggleAsync(LikeInput input, User? currentUser = null);
+    Task<LikeToggleResult> ToggleAsync(LikeInput input);
 }

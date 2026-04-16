@@ -28,17 +28,17 @@ namespace WebAPI.Manager
         // ============ PUBLIC FUNC LINE ============ //
         const int MAX_COUNT = 100;
 
-        public async Task TryToAddCode(int count = 1, User? currentUser = null)
+        public async Task TryToAddCode(int count = 1)
         {
             if (count <= 0 || count >= MAX_COUNT)
                 throw new Exception("입력 범위 초과");
 
             for (int i = 0; i < count; i++)
             {
-                await AddAsync(new Unit(), currentUser);
+                await AddAsync(new Unit());
             }
         }
-        public async Task<Invite> AddAsync(Unit input, User? currentUser = null)
+        public async Task<Invite> AddAsync(Unit input)
         {
             var user = await CurrentUser() ??
                 throw new Exception("USER IS NULL _ ADD ASYNC _ INVITE");
@@ -54,7 +54,7 @@ namespace WebAPI.Manager
             return invite;
         }
 
-        public async Task DeleteAsync(int id, User? currentUser = null)
+        public async Task DeleteAsync(int id)
         {
             var invite = await _context.invite.FindAsync(id) ??
                 throw new KeyNotFoundException("초대 코드 없음");
@@ -68,7 +68,7 @@ namespace WebAPI.Manager
             await _context.SaveChangesAsync();
         }
 
-        public async Task<PagedResult<InviteOutput>> GetAllAsync(InviteFilter filter, User? currentUser = null)
+        public async Task<PagedResult<InviteOutput>> GetAllAsync(InviteFilter filter)
         {
             var query = _context.invite.Include(i => i.Creator).AsQueryable();
             query = QueryFilter(filter, query);

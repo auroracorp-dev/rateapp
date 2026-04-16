@@ -14,6 +14,7 @@ using WebAPI.Models;
 
 namespace WebAPI.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class AuthController : ControllerBase
@@ -28,6 +29,7 @@ namespace WebAPI.Controllers
             _config = config;
         }
 
+        [AllowAnonymous]
         [HttpPost("login")]
         public async Task<IActionResult> Login(UserLogIn request)
         {
@@ -45,7 +47,7 @@ namespace WebAPI.Controllers
                 user.deviceSN
             });
         }
-        [Authorize]
+        
         [HttpPost("logout")]
         public IActionResult Logout()
         {

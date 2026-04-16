@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using AutoMapper;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using WebAPI.Context;
 using WebAPI.Manager.Interfaces;
@@ -6,20 +7,22 @@ using WebAPI.Models;
 
 namespace WebAPI.Manager
 {
-    public class ReviewManager : IBaseManager<Review, ReviewInput>, IGetAll<ReviewOutput, ReviewFilter>, IGetID<ReviewOutput>
+    public class ReviewManager : IBaseManager<Review, ReviewInput>, IGetAll<ReviewOutput, ReviewFilter>, IGetID<ReviewOutput>, IUpdate<ReviewOutput, ReviewUpdateInput>
     {
         private readonly AppDbContext _context;
         private readonly CurrentUserService _currentUserService;
+        private readonly IMapper _mapper;
 
-        public ReviewManager(AppDbContext context, CurrentUserService currentUserService)
+        public ReviewManager(AppDbContext context, CurrentUserService currentUserService, IMapper mapper)
         {
             _context = context;
             _currentUserService = currentUserService;
+            _mapper = mapper;
         }
 
         // ============ PUBLIC FUNC LINE ============ //
 
-        public async Task<Review> AddAsync(ReviewInput input, User? currentUser = null)
+        public async Task<Review> AddAsync(ReviewInput input)
         {
             var user = await CurrentUser() ??
                 throw new Exception("User 없음");
@@ -44,7 +47,7 @@ namespace WebAPI.Manager
         }
 
 
-        public async Task DeleteAsync(int id, User? currentUser = null)
+        public async Task DeleteAsync(int id)
         {
             var user = await CurrentUser() ??
                 throw new Exception("USER IS NULL _ DELETE ASYNC _ REVIEW");
@@ -63,7 +66,7 @@ namespace WebAPI.Manager
             await _context.SaveChangesAsync();
         }
 
-        public async Task<Utils.PagedResult<ReviewOutput>> GetAllAsync(ReviewFilter filter, User? currentUser = null)
+        public async Task<Utils.PagedResult<ReviewOutput>> GetAllAsync(ReviewFilter filter)
         {
             // 쿼리 전체
             IQueryable<Review> query = _context.review.AsNoTracking();
@@ -88,7 +91,7 @@ namespace WebAPI.Manager
             };
         }
 
-        public async Task<ReviewOutput?> GetByIdAsync(int id, User? currentUser = null)
+        public async Task<ReviewOutput?> GetByIdAsync(int id)
         {
             var review = await _context.review.AsNoTracking().Include(r => r.Building).
                 FirstOrDefaultAsync(r => r.reviewId == id) ??
@@ -97,6 +100,27 @@ namespace WebAPI.Manager
                 throw new InvalidDataException("아직 등록 되지 않음");
 
             return DTO<ReviewOutput, Review>.Convert(review);
+        }
+        public async Task<ReviewOutput?> UpdateAsync(int id, ReviewUpdateInput updateInput)
+        {
+            updateInput.Validate();
+            // 유저 체크
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL_UPDATE_ASYNC_REVIEW");
+            // 해당 건물 정보 취득
+            var target = await _context.review.FindAsync(id) ??
+                throw new KeyNotFoundException("해당 리뷰는 존재하지 않습니다).");
+            // 자기자신이 작성한 글 || 관리자 권한
+            if (!user.IsMine(target.userId) && !user.HasManagerPermission())
+                throw new Exception("권한이 없습니다.");
+
+            // aft_buildingInput의 프로퍼티에서 값이 있는 애만 수정하고 없는 애는 bef_의 값 그대로
+            // 사용하게 하고 싶다.
+            _mapper.Map(updateInput, target);
+
+            await _context.SaveChangesAsync();
+
+            return _mapper.Map<ReviewOutput>(target);
         }
 
         // ============ PRIVATE FUNC LINE ============ //

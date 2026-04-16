@@ -122,7 +122,22 @@ public class BuildingInput
             throw new InvalidOperationException("경도/위도 범위 오류");
     }
 }
+public class BuildingUpdateInput
+{
+    public string? buildingName { get; set; }
+    public string? buildingAddress { get; set; }
+    public double? latitude { get; set; }
+    public double? longitude { get; set; }
 
+    public void Validate()
+    {
+        if (TextFilter.ContainsBadWord(buildingName) || TextFilter.ContainsBadWord(buildingAddress))
+            throw new InvalidOperationException("잘못된 입력입니다.");
+
+        if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
+            throw new InvalidOperationException("경도/위도 범위 오류");
+    }
+}
 public class BuildingOutput
 {
     public string buildingName { get; set; } = "";
@@ -131,6 +146,7 @@ public class BuildingOutput
     public int reviewCount { get; set; } = 0;
     public int uploadUserId { get; set; } = 0;
 }
+
 
 public class BuildingFilter
 {
