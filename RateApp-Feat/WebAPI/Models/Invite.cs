@@ -9,7 +9,7 @@ public class Invite
     // ============ VAR LINE ============ //
 
     public int inviteId { get; set; }
-    public string inviteCode { get; private set; }
+    public string inviteCode { get; private set; } = "";
     public DateTime createDate { get; private set; } = DateTime.UtcNow;
     public int? createdBy { get; private set; } = null;
     public int? usedBy { get; private set; } = null;

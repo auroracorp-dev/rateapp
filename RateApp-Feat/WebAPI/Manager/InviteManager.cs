@@ -40,7 +40,8 @@ namespace WebAPI.Manager
         }
         public async Task<Invite> AddAsync(Unit input, User? currentUser = null)
         {
-            var user = await CurrentUser();
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL _ ADD ASYNC _ INVITE");
 
             Invite invite = new Invite();
             string randomCode = await GenerateUniqueInviteCode(user);
@@ -90,7 +91,8 @@ namespace WebAPI.Manager
 
         public async Task<InviteOutput?> GetByAsync(User? currentUser = null)
         {
-            var user = await CurrentUser();
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL _ GET ASYNC _ INVITE");
             var invite = await GetOrAllocateInviteForUser(user);
             return DTO<InviteOutput, Invite>.Convert(invite);
         }

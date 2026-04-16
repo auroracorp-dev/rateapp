@@ -19,7 +19,8 @@ namespace WebAPI.Manager
 
         public async Task<LikeToggleResult> ToggleAsync(LikeInput input, User? currentUser = null)
         {
-            var user = await CurrentUser();
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL _ TOGGLE ASYNC");
 
             var review = await _context.review.FindAsync(input.reviewId) ??
                 throw new KeyNotFoundException("리뷰가 존재하지 않습니다.");

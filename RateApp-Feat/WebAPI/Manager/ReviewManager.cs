@@ -9,23 +9,26 @@ namespace WebAPI.Manager
     public class ReviewManager : IBaseManager<Review, ReviewInput>, IGetAll<ReviewOutput, ReviewFilter>, IGetID<ReviewOutput>
     {
         private readonly AppDbContext _context;
-        public ReviewManager(AppDbContext context)
+        private readonly CurrentUserService _currentUserService;
+
+        public ReviewManager(AppDbContext context, CurrentUserService currentUserService)
         {
             _context = context;
+            _currentUserService = currentUserService;
         }
 
         // ============ PUBLIC FUNC LINE ============ //
 
         public async Task<Review> AddAsync(ReviewInput input, User? currentUser = null)
         {
-            // 체크
-            // var user = Utils.EnsureUser(currentUser);
-            input.Validate();
+            var user = await CurrentUser() ??
+                throw new Exception("User 없음");
+
             var building = await _context.building.FindAsync(input.buildingId) ??
                 throw new KeyNotFoundException("해당 건물이 존재하지 않습니다.");
 
-            var review = await _context.review
-                .FirstOrDefaultAsync(r => r.userId == currentUser.userId && r.buildingId == input.buildingId);
+            var review = await _context.review.FirstOrDefaultAsync
+                (r => r.userId == user.userId && r.buildingId == input.buildingId);
             // 업데이트
             if (review != null)
             {
@@ -34,7 +37,7 @@ namespace WebAPI.Manager
             // 새로 생성
             else
             {
-                review = CreateNewReview(input, currentUser, building);
+                review = CreateNewReview(input, user, building);
             }
             await _context.SaveChangesAsync();
             return review;
@@ -43,13 +46,14 @@ namespace WebAPI.Manager
 
         public async Task DeleteAsync(int id, User? currentUser = null)
         {
-            // 체크
-            // var user = Utils.EnsureUser(currentUser);
+            var user = await CurrentUser() ??
+                throw new Exception("USER IS NULL _ DELETE ASYNC _ REVIEW");
+
             var review = await _context.review.FindAsync(id) ??
                 throw new KeyNotFoundException("해당 리뷰가 존재하지 않습니다.");
             var building = await _context.building.FindAsync(review.buildingId) ??
                 throw new KeyNotFoundException("해당 건물이 존재하지 않습니다.");
-            // review.CheckPermissionForDelete(currentUser);
+            review.CheckPermissionForDelete(user);
 
             // 건물 리뷰 제거 우선 반영
             building.RemoveReview(review.rating);
@@ -61,12 +65,8 @@ namespace WebAPI.Manager
 
         public async Task<Utils.PagedResult<ReviewOutput>> GetAllAsync(ReviewFilter filter, User? currentUser = null)
         {
-            // 유저 체크
-            // var user = Utils.EnsureUser(currentUser);
-
             // 쿼리 전체
             IQueryable<Review> query = _context.review.AsNoTracking();
-            //IQueryable<Review> query = _context.review.Include(r => r.User).Include(r => r.Building);
             query = QueryFilter(filter, query);
 
             return new Utils.PagedResult<ReviewOutput>
@@ -93,13 +93,15 @@ namespace WebAPI.Manager
             var review = await _context.review.AsNoTracking().Include(r => r.Building).
                 FirstOrDefaultAsync(r => r.reviewId == id) ??
                 throw new KeyNotFoundException("해당 리뷰 없음");
-            if (review.Building != null /* && !review.Building.CanUpload */)
+            if (review.Building != null)
                 throw new InvalidDataException("아직 등록 되지 않음");
 
             return DTO<ReviewOutput, Review>.Convert(review);
         }
 
         // ============ PRIVATE FUNC LINE ============ //
+        private async Task<User?> CurrentUser() => await _currentUserService.GetUserAsync();
+
         private void UpdateExistingReview(Review review, ReviewInput input, Building building)
         {
             var originRating = review.rating;

@@ -72,29 +72,29 @@ public class User
 }
 public class UserInput
 {
-    private string _deviceSN;
+    private string _deviceSN = "";
     [Required]
     [MaxLength(20)]
     public string deviceSN
     {
         get => _deviceSN;
-        set => _deviceSN = value?.Trim();
+        set => _deviceSN = value.Trim();
     }
-    private string _inviteCode;
+    private string _inviteCode = "";
     [Required]
     [MaxLength(20)]
     public string inviteCode
     {
         get => _inviteCode;
-        set => _inviteCode = value?.Trim();
+        set => _inviteCode = value.Trim();
     }
-    private string _userName;
+    private string _userName = "";
     [Required]
     [MaxLength(10)]
     public string userName
     {
         get => _userName;
-        set => _userName = value?.Trim();
+        set => _userName = value.Trim();
     }
     public void Validate()
     {
@@ -112,13 +112,13 @@ public class UserOutput
 }
 public class UserLogIn
 {
-    private string _deviceSN;
+    private string _deviceSN = "";
     [Required]
     [MaxLength(20)]
     public string deviceSN
     {
         get => _deviceSN; 
-        set => _deviceSN = value?.Trim();
+        set => _deviceSN = value.Trim();
     }
 }
 
