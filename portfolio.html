@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="建物レビューを扱う RateApp Web API の技術ポートフォリオ">
+<title>RateApp — バックエンド開発ポートフォリオ</title>
+<style>
+  :root { color-scheme:dark; --bg:#101618; --surface:#182123; --ink:#f5f6ed; --muted:#b6c5c1; --line:#394a49; --accent:#cbfa76; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:1rem/1.8 system-ui,"Yu Gothic",sans-serif; }
+  a { color:inherit; text-underline-offset:.25em; }
+  a:focus-visible, summary:focus-visible { outline:2px solid var(--accent); outline-offset:5px; }
+  .wrap { width:min(1120px, calc(100% - 40px)); margin:auto; }
+  header { border-bottom:1px solid var(--line); }
+  nav { display:flex; justify-content:space-between; align-items:center; gap:12px 30px; flex-wrap:wrap; padding:18px 0; }
+  nav a { text-decoration:none; }
+  nav a:hover { color:var(--accent); }
+  nav div { display:flex; gap:clamp(12px,3vw,36px); flex-wrap:wrap; color:var(--muted); font-size:.9rem; }
+  .brand { font-weight:800; letter-spacing:-.04em; }
+  .hero { padding:clamp(64px,11vw,132px) 0 60px; background:radial-gradient(ellipse at 85% 15%,#304333,transparent 63%); }
+  .hero .wrap { display:grid; grid-template-columns:1.32fr 1fr; align-items:end; gap:48px; }
+  .label { color:var(--accent); font: .875rem/1.5 ui-monospace,monospace; letter-spacing:.09em; }
+  h1,h2,h3,p { margin:0; }
+  h1 { font-size:clamp(4rem,11vw,9rem); line-height:.95; letter-spacing:-.09em; margin:16px 0 24px; }
+  h2 { font-size:clamp(1.8rem,4vw,3rem); line-height:1.25; margin-bottom:20px; }
+  h3 { font-size:1.15rem; margin-bottom:6px; }
+  .lead { color:var(--ink); font-size:clamp(1.15rem,2vw,1.45rem); font-weight:650; }
+  p { color:var(--muted); }
+  .hero p + p { margin-top:12px; }
+  .panel { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:24px; }
+  .route { display:grid; gap:12px; padding:14px 0 0; }
+  .route div { padding:10px 0; border-top:1px solid var(--line); }
+  code { color:var(--accent); font: .9em ui-monospace,monospace; overflow-wrap:anywhere; }
+  section { padding:64px 0; border-bottom:1px solid var(--line); }
+  .intro { max-width:740px; margin-bottom:26px; }
+  .steps { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; padding:0; margin:0; list-style:none; }
+  .steps li { border-top:3px solid var(--accent); background:var(--surface); padding:18px; }
+  .steps span { display:block; color:var(--muted); margin-top:4px; }
+  .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .details { margin-top:24px; border-top:1px solid var(--line); }
+  details { padding:16px 0; border-bottom:1px solid var(--line); }
+  summary { cursor:pointer; font-weight:700; }
+  details p { margin-top:8px; max-width:800px; }
+  dl { margin:0; }
+  dl div { display:grid; grid-template-columns:minmax(125px,1fr) 2fr; gap:8px 18px; padding:15px 0; border-top:1px solid var(--line); }
+  dt { font-weight:700; }
+  dd { margin:0; color:var(--muted); }
+  footer { padding:30px 0; color:var(--muted); }
+  @media(max-width:760px) { .hero .wrap { grid-template-columns:1fr; gap:28px; } .steps { grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:470px) { .grid,.steps,dl div { grid-template-columns:1fr; } section { padding:42px 0; } }
+  @media(prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+</style>
+</head>
+<body id="top">
+<header>
+  <nav class="wrap" aria-label="ページ内ナビゲーション">
+    <a class="brand" href="#top">RateApp</a>
+    <div><a href="#flow">仕組み</a><a href="#design">実装の工夫</a><a href="#stack">開発環境</a></div>
+  </nav>
+</header>
+<main>
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <span class="label">BACKEND PORTFOLIO</span>
+        <h1>RateApp</h1>
+        <p class="lead">招待制の建物レビュー API</p>
+        <p>招待コードで登録し、建物を登録・検索する。登録された建物にレビューを投稿し、ほかの利用者のレビューに「いいね」を付けられます。</p>
+      </div>
+      <aside class="panel" aria-label="主な API">
+        <div class="label">主な API</div>
+        <div class="route">
+          <div>ログイン<br><code>POST /api/auth/login</code></div>
+          <div>建物一覧<br><code>GET /api/buildings/getall</code></div>
+          <div>レビュー投稿<br><code>POST /api/reviews/add</code></div>
+          <div>いいねの切り替え<br><code>POST /api/likes/toggle</code></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <section id="flow">
+    <div class="wrap">
+      <h2>利用の流れと API の構成</h2>
+      <p class="intro">未使用の招待コードでアカウントを作成し、登録済みの端末シリアル番号でログインします。取得した JWT を Bearer トークンとして送信すると、認証が必要な API を利用できます。</p>
+      <ol class="steps" aria-label="リクエストの処理順">
+        <li><strong>Client</strong><span>HTTP リクエストを送信</span></li>
+        <li><strong>Controller</strong><span>認証・認可の適用後に入力を受け付ける</span></li>
+        <li><strong>Manager</strong><span>所有者や招待コードの状態を確認し、処理を実行</span></li>
+        <li><strong>PostgreSQL</strong><span>EF Core と Npgsql 経由で取得・保存</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="design">
+    <div class="wrap">
+      <h2>実装で工夫したこと</h2>
+      <div class="grid">
+        <article class="panel"><h3>操作権限と所有者の確認</h3><p>JWT の署名と有効期限を検証します。招待コードの発行はロールで制限し、レビューや建物を更新する際は現在のユーザーが登録者本人か、管理権限を持っているかを確認します。</p></article>
+        <article class="panel"><h3>いいねの重複を防ぐ</h3><p>レビュー ID とユーザー ID を複合主キーにして、同じユーザーが同じレビューに複数の「いいね」を登録できないようにしました。切り替え時は「いいね」の行とレビューの件数を同じ保存処理で更新します。</p></article>
+        <article class="panel"><h3>関連データの削除ルール</h3><p>外部キーごとに削除時の動作を設定しました。たとえばレビューの削除時は関連する「いいね」を連動して削除し、レビューが参照する建物の削除は制限します。</p></article>
+        <article class="panel"><h3>一覧取得とレスポンスの整形</h3><p>一覧取得にフィルターとページネーションを用意しました。参照用のクエリでは変更追跡を省略します。更新処理では AutoMapper を使い、入力 DTO の値をエンティティに反映し、更新後のデータを出力 DTO に変換します。</p></article>
+      </div>
+      <div class="details">
+        <details><summary>エラー応答の共通化</summary><p>例外処理を起動設定にまとめ、権限エラー・対象データなし・状態の競合を、それぞれ HTTP 403・404・409 と JSON のメッセージに変換しています。</p></details>
+        <details><summary>今後の改善点</summary><p>会員登録はユーザーの作成と招待コードの使用済み更新を別々に保存しています。片方だけが保存される状態を防ぐため、両方を同一トランザクションで処理する余地があります。また、一部の管理 API はロール指定に <code>master</code> を使用しているため、実際に発行する <code>manager</code> とそろえる必要があります。</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section id="stack">
+    <div class="wrap">
+      <h2>技術スタックと開発環境</h2>
+      <dl>
+        <div><dt>言語・実行環境</dt><dd>C# / .NET 8 / ASP.NET Core Web API</dd></div>
+        <div><dt>データベース</dt><dd>PostgreSQL / Entity Framework Core 8 / Npgsql。Dapper は依存関係と列名マッピングの設定に含まれています。</dd></div>
+        <div><dt>認証・変換</dt><dd>JWT Bearer / AutoMapper</dd></div>
+        <div><dt>API の確認</dt><dd>開発環境の Swagger UI でリクエストの送信と応答の確認が可能</dd></div>
+        <div><dt>ローカル起動</dt><dd>.NET 8 SDK とスキーマ作成済みの PostgreSQL を用意し、接続文字列と JWT 署名鍵を設定</dd></div>
+      </dl>
+      <p><a href="README.md">README で起動手順を確認</a></p>
+    </div>
+  </section>
+</main>
+<footer class="wrap">RateApp Web API</footer>
+</body>
+</html>
